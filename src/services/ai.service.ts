@@ -30,11 +30,12 @@ export class AIService {
   async generateResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
+    receiverJid?: string
   ): Promise<AIResponse> {
     if (this.config.provider === 'openai') {
-      return this.generateOpenAIResponse(message, chatHistory);
+      return this.generateOpenAIResponse(message, chatHistory, receiverJid);
     } else {
-      return this.generateGeminiResponse(message, chatHistory);
+      return this.generateGeminiResponse(message, chatHistory, receiverJid);
     }
   }
 
@@ -44,9 +45,10 @@ export class AIService {
   private async generateOpenAIResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
+    receiverJid?: string
   ): Promise<AIResponse> {
     const startTime = Date.now();
-    logger.debug('Generating OpenAI response', { message, historyLength: chatHistory.length });
+    logger.debug('Generating OpenAI response', { message, historyLength: chatHistory.length, receiverJid });
     try {
       const conversationContext = this.buildConversationContext(chatHistory);
       const messages = [
@@ -81,47 +83,121 @@ export class AIService {
   private async generateGeminiResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
+    receiverJid?: string
   ): Promise<AIResponse> {
     const startTime = Date.now();
-    logger.debug('Generating Gemini response', { message, historyLength: chatHistory.length });
+    logger.debug('Generating Gemini response', { message });
     try {
-      const context = this.buildConversationContext(chatHistory)
-        .map(m => `${m.role === 'user' ? 'User' : 'Bot'}: ${m.content}`)
-        .join('\n');
-      const prompt = `${this.config.systemPrompt}\n${context}\nUser: ${message}\nBot:`;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${this.config.apiKey}`;
-      const body = {
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: this.config.temperature,
-          maxOutputTokens: this.config.maxTokens,
-        },
-      };
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Gemini API error', { status: response.status, errorText });
-        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      // 1. Fetch device info to get custom system prompt and device ID
+      let currentSystemPrompt = this.config.systemPrompt;
+      let deviceId = null;
+
+      if (receiverJid) {
+        try {
+          const deviceRes = await fetch(`http://localhost:3000/api/devices?jid=${receiverJid}`, {
+            headers: { "x-internal-auth": "true" }
+          });
+          if (deviceRes.ok) {
+            const devices = await deviceRes.json();
+            if (devices && devices.length > 0) {
+              const device = devices[0];
+              deviceId = device.id;
+              if (device.systemPrompt) {
+                currentSystemPrompt = device.systemPrompt;
+                logger.info(`Using custom system prompt for device ${device.name}`);
+              }
+            }
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch device info for custom prompt', { err });
+        }
       }
-      const data: any = await response.json();
-      const aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || 'I apologize, but I cannot generate a response at the moment.';
+
+      // 2. Fetch specific knowledge sources for this device
+      let knowledgeFiles: any[] = [];
+      try {
+        const kbUrl = deviceId 
+          ? `http://localhost:3000/api/knowledge?deviceId=${deviceId}`
+          : 'http://localhost:3000/api/knowledge';
+          
+        const kbResponse = await fetch(kbUrl, {
+          headers: { "x-internal-auth": "true" }
+        });
+        if (kbResponse.ok) {
+          const sources = await kbResponse.json();
+          knowledgeFiles = sources.filter((s: any) => s.geminiFileUri);
+        }
+      } catch (err) {
+        logger.warn('Failed to fetch Knowledge Base sources, continuing without them', { err });
+      }
+
+      // 3. Initialize Google GenAI
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: this.config.apiKey });
+
+      // 3. Construct contents array (Files + User Message)
+      // Note: User requested to ignore chat history for now.
+      const contentParts: any[] = [];
+      
+      for (const file of knowledgeFiles) {
+        let mimeType = 'application/pdf';
+        const isText = file.type === 'URL' || 
+                       (file.filePath && file.filePath.endsWith('.txt')) || 
+                       file.name.endsWith('.txt');
+                       
+        if (isText) {
+          mimeType = 'text/plain';
+        } else if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+          mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        }
+        contentParts.push({
+          fileData: { 
+            fileUri: file.geminiFileUri, 
+            mimeType 
+          }
+        });
+      }
+      
+      // 3. Format chat history safely into the prompt
+      let promptText = "";
+      if (chatHistory.length > 0) {
+        promptText += "--- CONVERSATION HISTORY ---\n";
+        const recentHistory = chatHistory.slice(-8);
+        for (const msg of recentHistory) {
+          const isBot = msg.from === 'me' || (receiverJid && msg.from === receiverJid) || msg.from === 'system';
+          const sender = isBot ? "Anda (Bot)" : "Pelanggan";
+          promptText += `${sender}: ${msg.content}\n`;
+        }
+        promptText += "--- END HISTORY ---\n\n";
+      }
+      promptText += `Pesan Baru dari Pelanggan: ${message}`;
+      
+      contentParts.push({ text: promptText });
+
+      // 4. Generate Content
+      const response = await ai.models.generateContent({
+        model: this.config.model,
+        contents: contentParts,
+        config: {
+          systemInstruction: currentSystemPrompt,
+          temperature: this.config.temperature,
+          maxOutputTokens: 800, // Increased to prevent response cutoffs
+        }
+      });
+
+      const aiMessage = response.text || 'Mohon maaf, saya tidak dapat menjawab pertanyaan tersebut saat ini.';
+      
       const aiResponse: AIResponse = {
         message: aiMessage,
-        confidence: 0.9, // Gemini does not provide a confidence score
+        confidence: 0.9, 
         context: this.extractContext(chatHistory),
         timestamp: Date.now(),
       };
-      logger.info('Gemini response generated', { processingTime: Date.now() - startTime });
+      
+      logger.info('Gemini response generated with Knowledge Base', { 
+        processingTime: Date.now() - startTime,
+        kbFilesAttached: knowledgeFiles.length 
+      });
       return aiResponse;
     } catch (error) {
       logger.error('Error generating Gemini response', { error: error instanceof Error ? error.message : 'Unknown error' });

@@ -30,7 +30,7 @@ import {
 
 type Profile = {
   id: string;
-  fullName: string;
+  name: string;
   email: string;
   phone: string;
   timezone: string;
@@ -132,8 +132,8 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
                     <div className="space-y-2">
                       <label className="font-label-md text-label-md text-on-surface block">Nama Lengkap</label>
                       <input 
-                        name="fullName"
-                        value={profile.fullName}
+                        name="name"
+                        value={profile.name}
                         onChange={handleChange}
                         className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" 
                         type="text" 
@@ -155,7 +155,7 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
                         <span className="flex items-center px-4 bg-surface-container-low border border-r-0 border-outline-variant rounded-l-lg text-on-surface-variant font-label-md">+62</span>
                         <input 
                           name="phone"
-                          value={profile.phone}
+                          value={profile.phone || ""}
                           onChange={handleChange}
                           className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-r-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" 
                           type="tel" 

@@ -182,11 +182,12 @@ export class ChatbotService {
       const chatHistory = this.chatHistoryService.getConversationContext(message.to);
       logger.info('Retrieved chat history', { historyLength: chatHistory.length });
 
-      // Generate AI response
-      logger.info('Calling AI service to generate response');
+      // Generate response using AI Service
+      logger.info('Calling AI service generateResponse');
       const aiResponse = await this.aiService.generateResponse(
         message.content,
-        chatHistory
+        chatHistory,
+        message.to
       );
       logger.info('AI response generated successfully', { responseLength: aiResponse.message.length });
 

@@ -9,12 +9,15 @@ import {
   CreditCard, 
   Settings, 
   CircleHelp, 
+  Database,
 } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const getSidebarLinkClass = (path: string) => {
     const isActive = pathname === path;
@@ -63,6 +66,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Bot size={20} />
             <span className="font-label-md text-label-md">AI Agents</span>
           </Link>
+          <Link className={getSidebarLinkClass("/knowledge")} href="/knowledge">
+            <Database size={20} />
+            <span className="font-label-md text-label-md">Knowledge Base</span>
+          </Link>
           <a className={getSidebarLinkClass("/inbox")} href="#">
             <MessageSquare size={20} />
             <span className="font-label-md text-label-md">Inbox</span>
@@ -88,16 +95,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="font-label-md text-label-md">Help</span>
           </a>
           <div className="flex items-center gap-3 px-4 py-3 mt-4">
-            <img 
-              className="w-10 h-10 rounded-full border border-outline-variant/30 object-cover" 
-              alt="A professional headshot of a corporate manager" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpj28gKmyGT3AqrkaCFfOMJK2FbGRiHmVNum7cIyDENLZsKC0P8UPVr7baK157c7Q0hymTdlT70Gxjwi5Lc9D_yZpHeLbeGyCl_W8xxLOVeSO0FC10GjSykBYSq2RIyAirQ9t6DxqRkpUcWUergmunPXMUPl5RTD1kksSf-3UXgozYvmP_air7P86fkX9nXSXbT1OKONQRVXyoFj1ZdbPeuQsMdl-aiUSPlb3M6Ktkp6_ij3XCz-fVFQ" 
-            />
-            <div className="overflow-hidden">
-              <p className="font-label-md text-label-md text-on-surface font-bold truncate">Alex Rivera</p>
-              <p className="text-label-sm font-label-sm text-secondary truncate">Enterprise Plan</p>
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+              {session?.user?.name?.[0]?.toUpperCase() || "U"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-label-md font-label-md text-on-surface truncate">{session?.user?.name || "User"}</p>
+              <p className="text-label-sm font-label-sm text-secondary truncate">{session?.user?.email || "user@email.com"}</p>
             </div>
           </div>
+          <button 
+            onClick={() => signOut()}
+            className="w-full mt-2 py-2 px-4 text-red-500 font-label-md hover:bg-red-500/10 rounded-lg transition-colors text-left"
+          >
+            Logout
+          </button>
         </div>
       </aside>
 

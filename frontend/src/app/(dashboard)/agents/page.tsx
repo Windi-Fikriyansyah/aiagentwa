@@ -12,6 +12,7 @@ interface DeviceInfo {
   phoneNumber: string | null;
   jid: string | null;
   status: string;
+  systemPrompt: string | null;
   connectedAt: string | null;
   lastSeenAt: string | null;
 }
@@ -21,6 +22,10 @@ export default function AgentsPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [devices, setDevices] = useState<DeviceInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [editingDevice, setEditingDevice] = useState<DeviceInfo | null>(null);
+  const [editPromptValue, setEditPromptValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch status from server-side API (reliable, no browser WebSocket issues)
   const fetchStatus = useCallback(async () => {
@@ -94,6 +99,32 @@ export default function AgentsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch devices:", error);
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    if (!editingDevice) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/devices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jid: editingDevice.jid,
+          systemPrompt: editPromptValue,
+        }),
+      });
+      if (res.ok) {
+        setEditingDevice(null);
+        fetchDevices();
+      } else {
+        alert("Gagal menyimpan prompt.");
+      }
+    } catch (error) {
+      console.error("Failed to save prompt:", error);
+      alert("Terjadi kesalahan sistem.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -248,21 +279,31 @@ export default function AgentsPage() {
               </div>
               <div className="space-y-3">
                 {devices.map((device) => (
-                  <div key={device.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/20">
-                    <div className={`w-3 h-3 rounded-full ${device.status === 'connected' || device.status === 'ready' ? 'bg-green-500' : 'bg-red-400'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-label-md text-label-md text-on-surface truncate">{device.name}</p>
-                      <p className="font-body-sm text-body-sm text-secondary">
-                        {device.connectedAt ? `Terhubung: ${new Date(device.connectedAt).toLocaleString('id-ID')}` : 'Belum terhubung'}
-                      </p>
+                  <div key={device.id} className="flex flex-col p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/20 gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${device.status === 'connected' || device.status === 'ready' ? 'bg-green-500' : 'bg-red-400'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-label-md text-label-md text-on-surface truncate">{device.name}</p>
+                        <p className="font-body-sm text-body-sm text-secondary">
+                          {device.connectedAt ? `Terhubung: ${new Date(device.connectedAt).toLocaleString('id-ID')}` : 'Belum terhubung'}
+                        </p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full font-bold ${
+                        device.status === 'connected' || device.status === 'ready' 
+                          ? 'bg-green-500/10 text-green-600' 
+                          : 'bg-red-500/10 text-red-500'
+                      }`}>
+                        {device.status === 'connected' || device.status === 'ready' ? 'Online' : 'Offline'}
+                      </span>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full font-bold ${
-                      device.status === 'connected' || device.status === 'ready' 
-                        ? 'bg-green-500/10 text-green-600' 
-                        : 'bg-red-500/10 text-red-500'
-                    }`}>
-                      {device.status === 'connected' || device.status === 'ready' ? 'Online' : 'Offline'}
-                    </span>
+                    <div className="flex justify-end border-t border-outline-variant/20 pt-2 mt-1">
+                      <button 
+                        onClick={() => { setEditingDevice(device); setEditPromptValue(device.systemPrompt || ""); }}
+                        className="text-primary font-label-md text-sm hover:underline"
+                      >
+                        Edit Persona AI
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -270,6 +311,42 @@ export default function AgentsPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Persona Modal */}
+      {editingDevice && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface w-full max-w-2xl rounded-3xl p-6 shadow-lg border border-outline-variant/30 flex flex-col max-h-[90vh]">
+            <h3 className="font-headline-md text-headline-md mb-2">Edit Persona AI</h3>
+            <p className="font-body-md text-body-md text-secondary mb-6">
+              Ubah bagaimana bot merespons pelanggan. Instruksi di bawah ini (System Prompt) akan menjadi karakter atau otak utama bot WhatsApp ini.
+            </p>
+            
+            <textarea 
+              value={editPromptValue}
+              onChange={(e) => setEditPromptValue(e.target.value)}
+              className="flex-1 w-full min-h-[200px] bg-surface-container-low border border-outline-variant rounded-xl p-4 text-body-md font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none"
+              placeholder="Masukkan instruksi khusus bot..."
+            />
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button 
+                onClick={() => setEditingDevice(null)}
+                className="px-6 py-2.5 rounded-full font-label-md text-label-md text-secondary hover:bg-surface-container-high transition-colors"
+                disabled={isSaving}
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleSavePrompt}
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-full font-label-md text-label-md bg-primary text-on-primary hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

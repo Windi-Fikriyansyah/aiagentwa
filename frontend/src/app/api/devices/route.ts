@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // GET /api/devices - Get all devices
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    
+    const internalKey = request.headers.get("x-internal-auth");
+    const isInternal = internalKey === "true";
+
+    if (!userId && !isInternal) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const jid = searchParams.get("jid");
+
+    const whereClause: any = {};
+    if (jid) whereClause.jid = jid;
+    if (userId && !isInternal) whereClause.userId = userId;
+
     const devices = await prisma.device.findMany({
+      where: whereClause,
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(devices);
@@ -17,8 +37,28 @@ export async function GET() {
 // POST /api/devices - Create or update a device
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    
+    const internalKey = request.headers.get("x-internal-auth");
+    const isInternal = internalKey === "true";
+
+    if (!userId && !isInternal) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { jid, phoneNumber, name, status } = body;
+    const { jid, phoneNumber, name, status, systemPrompt } = body;
+
+    const defaultSystemPrompt = `Anda adalah Customer Service Virtual WhatsApp yang profesional, ramah, dan solutif.
+
+Instruksi:
+- Sapa pengguna dengan hangat dalam bahasa Indonesia yang ramah (misal: "Halo!", "Ada yang bisa dibantu?").
+- Berikan informasi yang akurat, singkat, dan berfokus pada solusi kebutuhan pelanggan.
+- Gunakan format teks yang mudah dibaca (gunakan poin-poin sederhana jika menjelaskan daftar/pilihan).
+- Gunakan emoji yang relevan secukupnya.
+- Selalu perhitungkan riwayat percakapan agar pelanggan tidak perlu mengulang informasi.
+- Jika ada hal yang belum jelas, tanyakan detailnya secara sopan sebelum memberikan rekomendasi.`;
 
     const device = await prisma.device.upsert({
       where: { jid: jid || "" },
@@ -26,16 +66,20 @@ export async function POST(request: Request) {
         phoneNumber,
         name: name || "WhatsApp Device",
         status: status || "connected",
+        systemPrompt: systemPrompt !== undefined ? systemPrompt : undefined,
         connectedAt: status === "connected" || status === "ready" ? new Date() : undefined,
         lastSeenAt: new Date(),
+        userId: userId, // Ensure userId is attached if created via UI
       },
       create: {
         jid,
         phoneNumber,
         name: name || "WhatsApp Device",
         status: status || "connected",
+        systemPrompt: systemPrompt !== undefined ? systemPrompt : defaultSystemPrompt,
         connectedAt: new Date(),
         lastSeenAt: new Date(),
+        userId: userId,
       },
     });
 
@@ -47,13 +91,21 @@ export async function POST(request: Request) {
 }
 
 // DELETE /api/devices - Delete all devices when disconnected
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
-    await prisma.device.deleteMany({});
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await prisma.device.deleteMany({
+      where: { userId }
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete devices:", error);
     return NextResponse.json({ error: "Failed to delete devices" }, { status: 500 });
   }
 }
-

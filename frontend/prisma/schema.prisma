@@ -6,28 +6,92 @@ datasource db {
   provider = "postgresql"
 }
 
-model Profile {
-  id                 String  @id @default(uuid())
-  fullName           String
-  email              String  @unique
-  phone              String
-  timezone           String
-  avatarUrl          String?
-  language           String  @default("id")
-  emailNotifications Boolean @default(true)
-  waNotifications    Boolean @default(true)
-  pushNotifications  Boolean @default(false)
-  twoFactor          Boolean @default(false)
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  
+  phone              String?
+  timezone           String?   @default("Asia/Jakarta")
+  language           String    @default("id")
+  emailNotifications Boolean   @default(true)
+  waNotifications    Boolean   @default(true)
+  pushNotifications  Boolean   @default(false)
+  twoFactor          Boolean   @default(false)
+
+  accounts      Account[]
+  sessions      Session[]
+  devices       Device[]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 model Device {
-  id          String   @id @default(uuid())
-  name        String   @default("WhatsApp Device")
-  phoneNumber String?
-  jid         String?  @unique
-  status      String   @default("disconnected")
-  connectedAt DateTime?
-  lastSeenAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String            @id @default(uuid())
+  name         String            @default("WhatsApp Device")
+  phoneNumber  String?
+  jid          String?           @unique
+  status       String            @default("disconnected")
+  systemPrompt String?
+  connectedAt  DateTime?
+  lastSeenAt   DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  knowledge    KnowledgeSource[]
+  
+  userId       String?
+  user         User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeSource {
+  id            String   @id @default(uuid())
+  name          String
+  type          String   // "FILE" or "URL"
+  status        String   @default("Processing") // "Synced", "Processing", "Error"
+  url           String?
+  filePath      String?
+  sizeBytes     Int?
+  geminiFileUri String?  // Stores the Gemini File API URI for context caching
+  
+  deviceId      String?
+  device        Device?  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
