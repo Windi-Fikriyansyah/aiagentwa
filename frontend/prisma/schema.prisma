@@ -19,3 +19,15 @@ model Profile {
   pushNotifications  Boolean @default(false)
   twoFactor          Boolean @default(false)
 }
+
+model Device {
+  id          String   @id @default(uuid())
+  name        String   @default("WhatsApp Device")
+  phoneNumber String?
+  jid         String?  @unique
+  status      String   @default("disconnected")
+  connectedAt DateTime?
+  lastSeenAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

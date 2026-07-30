@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Dashboard Overview for AgentFlow AI",
 };
 
+import DashboardLayout from "@/components/DashboardLayout";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -14,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body className="bg-background text-on-background antialiased overflow-x-hidden">
-        {children}
+        <DashboardLayout>
+          {children}
+        </DashboardLayout>
       </body>
     </html>
   );

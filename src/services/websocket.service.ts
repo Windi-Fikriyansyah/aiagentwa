@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { WebSocketMessage, EventType, AppEvent, ConnectionStatus } from '../types';
 import { logger } from '../utils/logger';
 
@@ -9,13 +10,16 @@ export class WebSocketService {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocket> = new Set();
   private eventHandlers: Map<EventType, Array<(data: any) => void>> = new Map();
+  private currentWhatsAppStatus: ConnectionStatus | null = null;
+  private currentQR: string | null = null;
+  private currentUser: any = null;
 
   constructor(private port: number = 8080) {
     logger.info('WebSocket Service initialized', { port });
   }
 
   /**
-   * Initialize WebSocket server
+   * Initialize WebSocket server and HTTP status API
    */
   initialize(): void {
     try {
@@ -30,6 +34,9 @@ export class WebSocketService {
       });
 
       logger.info('WebSocket server started', { port: this.port });
+
+      // Start HTTP API server on port+1
+      this.startHttpServer(this.port + 1);
     } catch (error) {
       logger.error('Failed to initialize WebSocket server', { 
         error: error instanceof Error ? error.message : 'Unknown error' 
@@ -53,6 +60,35 @@ export class WebSocketService {
       data: { status: 'connected', timestamp: Date.now() },
       timestamp: Date.now(),
     });
+
+    // Send current WhatsApp status if known
+    if (this.currentWhatsAppStatus) {
+      logger.info('Sending cached WhatsApp status to new client', { status: this.currentWhatsAppStatus });
+      this.sendToClient(ws, {
+        type: 'message',
+        data: {
+          type: EventType.CONNECTION_STATUS_CHANGED,
+          data: { status: this.currentWhatsAppStatus },
+          timestamp: Date.now(),
+        },
+        timestamp: Date.now(),
+      });
+    }
+
+    // Send current QR if known
+    logger.info('Checking cached QR for new client', { hasQR: !!this.currentQR, qrLength: this.currentQR?.length ?? 0 });
+    if (this.currentQR) {
+      logger.info('Sending cached QR code to new client');
+      this.sendToClient(ws, {
+        type: 'message',
+        data: {
+          type: EventType.QR_CODE_GENERATED,
+          data: { qr: this.currentQR },
+          timestamp: Date.now(),
+        },
+        timestamp: Date.now(),
+      });
+    }
 
     ws.on('message', (data: Buffer) => {
       try {
@@ -214,6 +250,45 @@ export class WebSocketService {
   }
 
   /**
+   * Start HTTP server for status API
+   */
+  private startHttpServer(httpPort: number): void {
+    const httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
+      // CORS headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Content-Type', 'application/json');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
+      if (req.url === '/api/status' && req.method === 'GET') {
+        const response = {
+          status: this.currentWhatsAppStatus || 'disconnected',
+          qr: this.currentQR,
+          connectedClients: this.clients.size,
+          timestamp: Date.now(),
+          user: this.currentUser,
+        };
+        res.writeHead(200);
+        res.end(JSON.stringify(response));
+        return;
+      }
+
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Not found' }));
+    });
+
+    httpServer.listen(httpPort, () => {
+      logger.info('HTTP status API started', { port: httpPort });
+    });
+  }
+
+  /**
    * Close WebSocket server
    */
   close(): void {
@@ -228,10 +303,32 @@ export class WebSocketService {
   /**
    * Send connection status update
    */
-  sendConnectionStatus(status: ConnectionStatus): void {
+  sendConnectionStatus(status: ConnectionStatus, user: any = null): void {
+    this.currentWhatsAppStatus = status;
+    if (user) {
+      this.currentUser = user;
+    }
+    if (status === ConnectionStatus.DISCONNECTED) {
+      this.currentUser = null;
+    }
+    if (status === ConnectionStatus.CONNECTED || status === ConnectionStatus.READY) {
+      this.currentQR = null; // Clear QR when connected
+    }
     this.broadcastEvent({
       type: EventType.CONNECTION_STATUS_CHANGED,
       data: { status },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Send QR code generated event
+   */
+  sendQRGenerated(qr: string): void {
+    this.currentQR = qr;
+    this.broadcastEvent({
+      type: EventType.QR_CODE_GENERATED,
+      data: { qr },
       timestamp: Date.now(),
     });
   }

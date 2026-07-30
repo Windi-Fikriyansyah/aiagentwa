@@ -44,8 +44,15 @@ export class ChatbotService {
 
     // WhatsApp connection status handler
     this.whatsappService.onConnectionStatusChange((status: ConnectionStatus) => {
-      this.webSocketService.sendConnectionStatus(status);
-      logger.info('WhatsApp connection status changed', { status });
+      const user = this.whatsappService.getUser();
+      this.webSocketService.sendConnectionStatus(status, user);
+      logger.info('WhatsApp connection status changed', { status, hasUser: !!user });
+    });
+
+    // WhatsApp QR code handler
+    this.whatsappService.onQRGenerated((qr: string) => {
+      this.webSocketService.sendQRGenerated(qr);
+      logger.info('WhatsApp QR code broadcasted via WebSocket');
     });
   }
 

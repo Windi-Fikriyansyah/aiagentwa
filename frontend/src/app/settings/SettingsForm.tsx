@@ -76,84 +76,7 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
 
   return (
     <>
-      {/* SideNavBar Shell */}
-      <aside className="w-[280px] h-full fixed left-0 top-0 bg-surface-container-lowest dark:bg-inverse-surface border-r border-outline-variant dark:border-outline flex flex-col p-stack-md z-50">
-        <div className="flex items-center gap-3 px-2 mb-10">
-          <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
-            <Bot className="text-on-primary-container" size={24} />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">WhatsAI</span>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Enterprise AI</span>
-          </div>
-        </div>
-        
-        <nav className="flex-1 space-y-1">
-          <a className="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors rounded-lg font-label-md text-label-md" href="/">
-            <LayoutDashboard size={20} />
-            <span>Dashboard</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors rounded-lg font-label-md text-label-md" href="#">
-            <Bot size={20} />
-            <span>Agent Builder</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors rounded-lg font-label-md text-label-md" href="#">
-            <MessageSquare size={20} />
-            <span>Inbox</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors rounded-lg font-label-md text-label-md" href="#">
-            <Puzzle size={20} />
-            <span>Integrations</span>
-          </a>
-          {/* Active Navigation Logic: Settings maps to current page */}
-          <a className="flex items-center gap-3 px-4 py-3 bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-lg font-bold font-label-md text-label-md active:scale-[0.98] transition-transform duration-200" href="/settings">
-            <Settings size={20} />
-            <span>Settings</span>
-          </a>
-        </nav>
-        
-        <div className="mt-auto space-y-1 pt-4 border-t border-outline-variant">
-          <a className="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors rounded-lg font-label-md text-label-md" href="#">
-            <UserCircle size={20} />
-            <span>Profile</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors rounded-lg font-label-md text-label-md" href="#">
-            <CircleHelp size={20} />
-            <span>Help</span>
-          </a>
-        </div>
-      </aside>
-
-      {/* TopAppBar Shell */}
-      <header className="fixed top-0 right-0 w-[calc(100%-280px)] h-16 bg-surface/80 dark:bg-background/80 backdrop-blur-md border-b border-outline-variant dark:border-outline flex justify-between items-center px-gutter z-40">
-        <div className="flex items-center gap-8">
-          <h1 className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Pengaturan Profil</h1>
-          <nav className="hidden md:flex gap-6">
-            <a className="font-label-md text-label-md text-on-surface-variant dark:text-on-secondary-fixed-variant hover:text-primary transition-colors" href="#">Docs</a>
-            <a className="font-label-md text-label-md text-on-surface-variant dark:text-on-secondary-fixed-variant hover:text-primary transition-colors" href="#">Support</a>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative hidden lg:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
-            <input className="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-body-sm w-64 focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Cari pengaturan..." type="text"/>
-          </div>
-          <button className="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
-            <Bell size={24} />
-          </button>
-          <button className="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity flex items-center gap-2">
-            <ArrowUpCircle size={18} />
-            Upgrade
-          </button>
-          <div className="w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant overflow-hidden cursor-pointer active:opacity-80 transition-opacity">
-            <img className="w-full h-full object-cover" alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpyKRCyMokwDY7HREcnOlymmoCN1Lmbtt4rYuVb_4orEoYbs67XtbsXmJlhhqTbgQlXfmdfqtf3mR6XU2h-yU1Afd-yHa9hz1duzlBX3ZgwqqhZWzag3xS5t4ql7kylOBOZREHNW8pLTrDRwOtWdGplQQOuoxxtaLsGb7L1tiUmkhwAmWpaoKmBUBtdJJgpLTn9aL2s4HYp3NSeFJauxxcBKRfKl8T9eg_Xxkc0cLFxzRqkaWXPpH0Kg"/>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Canvas */}
-      <main className="ml-[280px] pt-16 min-h-screen pb-10">
-        <div className="max-w-[1000px] mx-auto px-gutter py-stack-lg space-y-stack-lg">
+        <div className="w-full space-y-stack-lg">
           
           {/* Hero Header Section */}
           <section className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-outline-variant">
@@ -444,7 +367,6 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
             </div>
           </footer>
         </div>
-      </main>
     </>
   );
 }

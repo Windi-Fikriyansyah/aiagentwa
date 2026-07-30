@@ -17,9 +17,17 @@ export class WhatsAppService {
   private connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED;
   private messageHandlers: Array<(message: WhatsAppMessage) => void> = [];
   private statusHandlers: Array<(status: ConnectionStatus) => void> = [];
+  private qrHandlers: Array<(qr: string) => void> = [];
 
   constructor() {
     logger.info('WhatsApp Service initialized');
+  }
+
+  /**
+   * Register a handler for QR code generation
+   */
+  public onQRGenerated(handler: (qr: string) => void): void {
+    this.qrHandlers.push(handler);
   }
 
   /**
@@ -35,6 +43,7 @@ export class WhatsAppService {
       this.sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
+        browser: ['AgentFlow AI', 'Chrome', '1.0.0'],
       });
 
       // Handle connection updates
@@ -44,13 +53,23 @@ export class WhatsAppService {
         if (qr) {
           logger.info('QR Code received, please scan with WhatsApp');
           qrcode.generate(qr, { small: true });
+          
+          this.qrHandlers.forEach(handler => {
+            try {
+              handler(qr);
+            } catch (error) {
+              logger.error('Error in QR handler', { error: error instanceof Error ? error.message : 'Unknown error' });
+            }
+          });
         }
 
         if (connection === 'close') {
-          const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
+          const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
           
           logger.info('Connection closed', { 
             reason: lastDisconnect?.error, 
+            statusCode,
             shouldReconnect 
           });
 
@@ -58,7 +77,24 @@ export class WhatsAppService {
             this.updateConnectionStatus(ConnectionStatus.CONNECTING);
             await this.initialize();
           } else {
+            // Logged out or device removed - delete session and start fresh
+            logger.info('Device logged out or removed. Clearing session and restarting for new QR...');
             this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
+            
+            // Delete old session
+            const fs = await import('fs');
+            const path = await import('path');
+            const sessionPath = path.default.resolve('.whatsapp-session');
+            if (fs.existsSync(sessionPath)) {
+              fs.rmSync(sessionPath, { recursive: true, force: true });
+              logger.info('Old session deleted');
+            }
+
+            // Restart after a short delay to get new QR
+            setTimeout(async () => {
+              this.updateConnectionStatus(ConnectionStatus.CONNECTING);
+              await this.initialize();
+            }, 2000);
           }
         } else if (connection === 'open') {
           logger.info('WhatsApp connection established');
@@ -213,6 +249,13 @@ export class WhatsAppService {
         logger.error('Error in status handler', { error: error instanceof Error ? error.message : 'Unknown error' });
       }
     });
+  }
+
+  /**
+   * Get logged-in user information
+   */
+  getUser(): any {
+    return this.sock?.user || null;
   }
 
   /**

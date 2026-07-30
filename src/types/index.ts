@@ -113,6 +113,7 @@ export enum EventType {
   CONNECTION_STATUS_CHANGED = 'connection_status_changed',
   AI_RESPONSE_GENERATED = 'ai_response_generated',
   ERROR_OCCURRED = 'error_occurred',
+  QR_CODE_GENERATED = 'qr_code_generated',
 }
 
 /**
