@@ -36,6 +36,8 @@ class WhatsAppAIChatbot {
       const aiService = new AIService(aiConfig);
       const chatHistoryService = new ChatHistoryService(appConfig.maxHistoryLength);
       const webSocketService = new WebSocketService(appConfig.port);
+      const { MayarService } = await import('./services/mayar.service');
+      const mayarService = new MayarService();
 
       // Create and initialize chatbot service
       this.chatbotService = new ChatbotService(
@@ -43,6 +45,7 @@ class WhatsAppAIChatbot {
         aiService,
         chatHistoryService,
         webSocketService,
+        mayarService,
         appConfig.responseDelay
       );
 

@@ -20,6 +20,7 @@ const envSchema = Joi.object({
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),
   AI_MAX_TOKENS: Joi.number().default(150),
   AI_TEMPERATURE: Joi.number().min(0).max(2).default(0.7),
+  MAYAR_API_KEY: Joi.string().allow(''),
 }).unknown();
 
 /**
@@ -45,6 +46,7 @@ export const getAppConfig = (): AppConfig => {
     openaiModel: process.env['OPENAI_MODEL'],
     geminiApiKey: process.env['GEMINI_API_KEY'],
     geminiModel: process.env['GEMINI_MODEL'],
+    mayarApiKey: process.env['MAYAR_API_KEY'],
     maxHistoryLength: parseInt(process.env['MAX_HISTORY_LENGTH'] || '50', 10),
     responseDelay: parseInt(process.env['RESPONSE_DELAY'] || '1000', 10),
     logLevel: process.env['LOG_LEVEL'] || 'info',

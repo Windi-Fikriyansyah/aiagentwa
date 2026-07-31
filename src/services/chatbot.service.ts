@@ -5,6 +5,8 @@ import { WebSocketService } from './websocket.service';
 import { WhatsAppMessage, MessageProcessingResult, ConnectionStatus } from '../types';
 import { logger } from '../utils/logger';
 
+import { MayarService, FollowUpTask } from './mayar.service';
+
 /**
  * Main Chatbot Service that orchestrates all components
  */
@@ -13,6 +15,7 @@ export class ChatbotService {
   private aiService: AIService;
   private chatHistoryService: ChatHistoryService;
   private webSocketService: WebSocketService;
+  private mayarService: MayarService;
   private isProcessing: boolean = false;
   private responseDelay: number;
 
@@ -21,12 +24,14 @@ export class ChatbotService {
     aiService: AIService,
     chatHistoryService: ChatHistoryService,
     webSocketService: WebSocketService,
+    mayarService: MayarService,
     responseDelay: number = 1000
   ) {
     this.whatsappService = whatsappService;
     this.aiService = aiService;
     this.chatHistoryService = chatHistoryService;
     this.webSocketService = webSocketService;
+    this.mayarService = mayarService;
     this.responseDelay = responseDelay;
 
     this.setupEventHandlers();
@@ -77,6 +82,39 @@ export class ChatbotService {
       this.webSocketService.sendQRGenerated(qr);
       logger.info('WhatsApp QR code broadcasted via WebSocket');
     });
+
+    // Mayar Follow-up Handler
+    this.mayarService.setFollowUpHandler(async (task: FollowUpTask) => {
+      logger.info(`Generating follow-up message for ${task.customerName} (${task.productName})`);
+      const prompt = `Buat sebuah pesan pengingat pembayaran (follow-up) WhatsApp yang ramah dan sopan untuk pelanggan.
+Detail Transaksi:
+Nama: ${task.customerName}
+Produk: ${task.productName}
+Nominal: Rp ${task.amount.toLocaleString('id-ID')}
+Link Pembayaran: ${task.paymentUrl}
+
+Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembayaran, dan tawarkan bantuan jika ada kesulitan. Jangan terlalu kaku.`;
+      
+      const aiResponse = await this.aiService.generateResponse(prompt, []);
+      if (aiResponse && aiResponse.message) {
+        await this.whatsappService.sendMessage(task.customerMobile, aiResponse.message);
+        
+        // Mock a bot message to sync to DB and WS
+        const botMessage: WhatsAppMessage = {
+          id: `mayar-${task.transactionId}-${Date.now()}`,
+          from: this.whatsappService.getUser()?.id?.replace(/:\d+/, '') || 'unknown',
+          to: task.customerMobile,
+          timestamp: Date.now(),
+          type: 'text',
+          content: aiResponse.message,
+          isGroup: false,
+          senderName: 'AI Follow Up',
+        };
+        this.chatHistoryService.addMessage(task.customerMobile, botMessage);
+        this.webSocketService.sendMessageSent(botMessage);
+        await this.syncMessageToDb(botMessage, "ai");
+      }
+    });
   }
 
   /**
@@ -91,6 +129,9 @@ export class ChatbotService {
 
       // Initialize WhatsApp service
       await this.whatsappService.initialize();
+
+      // Initialize Mayar Service (Cron)
+      this.mayarService.startCron();
 
       // Test AI service connection
       const aiConnected = await this.aiService.testConnection();
@@ -369,6 +410,7 @@ export class ChatbotService {
     try {
       await this.whatsappService.disconnect();
       this.webSocketService.close();
+      this.mayarService.stopCron();
       
       logger.info('Chatbot shutdown completed');
     } catch (error) {

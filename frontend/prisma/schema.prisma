@@ -21,6 +21,7 @@ model User {
   waNotifications    Boolean   @default(true)
   pushNotifications  Boolean   @default(false)
   twoFactor          Boolean   @default(false)
+  mayarApiKey        String?
 
   accounts      Account[]
   sessions      Session[]
@@ -128,4 +129,25 @@ model Message {
   
   timestamp      DateTime     @default(now())
   createdAt      DateTime     @default(now())
+}
+
+model MayarTransaction {
+  id              String    @id // From Mayar transaction id
+  customerId      String
+  customerName    String
+  customerEmail   String?
+  customerMobile  String    // Unformatted mobile from Mayar
+  amount          Int
+  status          String
+  paymentUrl      String
+  paymentLinkId   String
+  productName     String
+  type            String
+  createdAt       DateTime  // Creation date in Mayar
+  
+  followUpCount   Int       @default(0)
+  lastFollowUpAt  DateTime?
+  
+  addedAt         DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }

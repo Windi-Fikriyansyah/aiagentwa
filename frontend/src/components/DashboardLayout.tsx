@@ -10,6 +10,7 @@ import {
   Settings,
   CircleHelp,
   Database,
+  Plug,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -86,6 +87,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Footer Navigation */}
         <div className="mt-auto space-y-1 pt-stack-md border-t border-outline-variant/20">
+          <Link className={getSidebarLinkClass("/integrations")} href="/integrations">
+            <Plug size={20} />
+            <span className="font-label-md text-label-md">Integrations</span>
+          </Link>
           <Link className={getSidebarLinkClass("/settings")} href="/settings">
             <Settings size={20} />
             <span className="font-label-md text-label-md">Settings</span>

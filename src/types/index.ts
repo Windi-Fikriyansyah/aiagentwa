@@ -57,6 +57,7 @@ export interface AppConfig {
   openaiModel?: string | undefined;
   geminiApiKey?: string | undefined;
   geminiModel?: string | undefined;
+  mayarApiKey?: string | undefined;
   maxHistoryLength: number;
   responseDelay: number;
   logLevel: string;
