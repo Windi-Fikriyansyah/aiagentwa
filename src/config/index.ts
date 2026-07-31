@@ -67,6 +67,9 @@ export const getAIServiceConfig = (): AIServiceConfig => {
   } else if (provider === 'gemini') {
     apiKey = process.env['GEMINI_API_KEY'] || '';
     model = process.env['GEMINI_MODEL'] || 'gemini-pro';
+  } else if (provider === 'openrouter') {
+    apiKey = process.env['OPENROUTER_API_KEY'] || '';
+    model = process.env['OPENROUTER_MODEL'] || 'google/gemini-2.5-flash';
   }
   return {
     provider,

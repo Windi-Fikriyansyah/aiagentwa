@@ -91,6 +91,34 @@ class WhatsAppAIChatbot {
   async start(): Promise<void> {
     await this.initialize();
 
+    // Start Gemini Refresh Cron (Runs every 12 hours)
+    setInterval(async () => {
+      try {
+        logger.info('Running Gemini Cache Refresh Cron...');
+        const res = await fetch('http://localhost:3000/api/cron/gemini-refresh', {
+          headers: { 'x-internal-auth': 'true' }
+        });
+        const data = await res.json();
+        logger.info('Gemini Cache Refresh result:', data);
+      } catch (err: any) {
+        logger.error('Gemini Cache Refresh failed', { error: err.message });
+      }
+    }, 12 * 60 * 60 * 1000);
+
+    // Initial run on startup (after 30 seconds)
+    setTimeout(async () => {
+      try {
+        logger.info('Initial Gemini Cache Refresh Cron...');
+        const res = await fetch('http://localhost:3000/api/cron/gemini-refresh', {
+          headers: { 'x-internal-auth': 'true' }
+        });
+        const data = await res.json();
+        logger.info('Initial Gemini Cache Refresh result:', data);
+      } catch (err: any) {
+        logger.error('Initial Gemini Cache Refresh failed', { error: err.message });
+      }
+    }, 30000);
+
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
       logger.info('Received SIGINT, shutting down gracefully...');

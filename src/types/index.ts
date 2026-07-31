@@ -45,7 +45,7 @@ export interface WebSocketMessage {
 /**
  * Supported AI providers
  */
-export type AIProvider = 'openai' | 'gemini';
+export type AIProvider = 'openai' | 'gemini' | 'openrouter';
 
 /**
  * Application configuration interface (add provider)

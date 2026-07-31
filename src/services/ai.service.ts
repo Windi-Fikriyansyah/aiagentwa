@@ -19,6 +19,16 @@ export class AIService {
     if (config.provider === 'openai') {
       this.openai = new OpenAI({ apiKey: config.apiKey });
       logger.info('AI Service initialized with OpenAI');
+    } else if (config.provider === 'openrouter') {
+      this.openai = new OpenAI({ 
+        baseURL: "https://openrouter.ai/api/v1",
+        apiKey: config.apiKey,
+        defaultHeaders: {
+          "HTTP-Referer": "http://localhost:3000", // Required by OpenRouter
+          "X-Title": "WhatsApp AI Agent", // Optional
+        }
+      });
+      logger.info('AI Service initialized with OpenRouter');
     } else {
       logger.info('AI Service initialized with Gemini');
     }
@@ -32,7 +42,7 @@ export class AIService {
     chatHistory: WhatsAppMessage[],
     receiverJid?: string
   ): Promise<AIResponse> {
-    if (this.config.provider === 'openai') {
+    if (this.config.provider === 'openai' || this.config.provider === 'openrouter') {
       return this.generateOpenAIResponse(message, chatHistory, receiverJid);
     } else {
       return this.generateGeminiResponse(message, chatHistory, receiverJid);
