@@ -80,8 +80,41 @@ export class MayarService {
           }
 
           const data = await response.json();
-          if (data.statusCode === 200 && data.data) {
-            await this.processTransactions(data.data);
+          if (data.statusCode === 200 && data.data && data.data.length > 0) {
+            // Fetch paid transactions for validation
+            logger.info(`Fetching paid transactions for validation for user ${user.id}...`);
+            const paidResponse = await fetch('https://api.mayar.id/hl/v1/transactions?page=1&pageSize=50', {
+              headers: {
+                'Authorization': `Bearer ${user.mayarApiKey}`
+              }
+            });
+            
+            const paidEmails = new Set<string>();
+            const paidMobiles = new Set<string>();
+            
+            if (paidResponse.ok) {
+              const paidData = await paidResponse.json();
+              if (paidData.statusCode === 200 && paidData.data) {
+                for (const trx of paidData.data) {
+                  if (trx.customer?.email) paidEmails.add(trx.customer.email.toLowerCase());
+                  if (trx.customer?.mobile) paidMobiles.add(trx.customer.mobile);
+                }
+              }
+            }
+
+            // Filter unpaid transactions: remove those who already have a paid transaction
+            const validUnpaidTransactions = data.data.filter((trx: any) => {
+              const email = trx.customer?.email?.toLowerCase();
+              const mobile = trx.customer?.mobile;
+              
+              if (email && paidEmails.has(email)) return false;
+              if (mobile && paidMobiles.has(mobile)) return false;
+              
+              return true;
+            });
+
+            logger.info(`Found ${validUnpaidTransactions.length} valid unpaid transactions out of ${data.data.length} after paid validation.`);
+            await this.processTransactions(validUnpaidTransactions);
           }
         } catch (err: any) {
           logger.error(`Failed to process Mayar user ${user.id}`, { error: err.message });
