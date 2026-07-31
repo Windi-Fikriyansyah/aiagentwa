@@ -30,6 +30,29 @@ export class ChatbotService {
     this.responseDelay = responseDelay;
 
     this.setupEventHandlers();
+    
+    // Allow HTTP API to trigger manual messages
+    this.webSocketService.setOnSendMessage(async (chatId, message) => {
+      const sent = await this.sendManualMessage(chatId, message);
+      if (sent) {
+        // Mock a bot message to sync to DB and WS
+        const botMessage: WhatsAppMessage = {
+          id: `manual-${Date.now()}`,
+          from: this.whatsappService.getUser()?.id?.replace(/:\d+/, '') || 'unknown',
+          to: chatId,
+          timestamp: Date.now(),
+          type: 'text',
+          content: message,
+          isGroup: chatId.endsWith('@g.us'),
+          senderName: 'Admin',
+        };
+        this.chatHistoryService.addMessage(chatId, botMessage);
+        this.webSocketService.sendMessageSent(botMessage);
+        this.syncMessageToDb(botMessage, "human");
+      }
+      return sent;
+    });
+    
     logger.info('Chatbot Service initialized');
   }
 
@@ -107,6 +130,9 @@ export class ChatbotService {
 
       // Add message to chat history
       this.chatHistoryService.addMessage(message.to, message);
+      
+      // Sync incoming message to database
+      this.syncMessageToDb(message, "user");
 
       // Process message and generate response
       logger.info('About to process message with AI service');
@@ -137,6 +163,9 @@ export class ChatbotService {
 
           this.chatHistoryService.addMessage(message.to, botMessage);
           this.webSocketService.sendMessageSent(botMessage);
+          
+          // Sync AI response to database
+          this.syncMessageToDb(botMessage, "ai");
 
           logger.info('Response sent successfully', { 
             to: message.from, 
@@ -222,6 +251,41 @@ export class ChatbotService {
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Sync message to database via API
+   */
+  private async syncMessageToDb(message: WhatsAppMessage, sender: "user" | "ai" | "human"): Promise<void> {
+    try {
+      const user = this.whatsappService.getUser();
+      if (!user || !user.id) return;
+      
+      const deviceJid = user.id.replace(/:\d+/, ''); // Strip device id suffix e.g. :1
+      const customerJid = sender === "user" ? message.from : message.to;
+      const customerName = sender === "user" ? message.senderName : undefined;
+
+      fetch('http://localhost:3000/api/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-auth': 'true'
+        },
+        body: JSON.stringify({
+          deviceJid,
+          customerJid,
+          customerName,
+          message: {
+            ...message,
+            sender
+          }
+        })
+      }).catch(err => {
+        logger.error('API call to sync message failed', { error: err.message });
+      });
+    } catch (error) {
+      logger.error('Failed to prepare message sync', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
   }
 
   /**

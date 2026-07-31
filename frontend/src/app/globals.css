@@ -16,3 +16,22 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: #f7f9fb;
 }
+
+.chat-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.chat-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+.chat-bubble-ai {
+    position: relative;
+    border-bottom-right-radius: 2px !important;
+}
+.chat-bubble-user {
+    position: relative;
+    border-bottom-left-radius: 2px !important;
+}

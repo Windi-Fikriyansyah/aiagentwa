@@ -1,14 +1,14 @@
 "use client";
 
-import { 
-  Bot, 
-  Plus, 
-  LayoutDashboard, 
-  MessageSquare, 
-  BarChart3, 
-  CreditCard, 
-  Settings, 
-  CircleHelp, 
+import {
+  Bot,
+  Plus,
+  LayoutDashboard,
+  MessageSquare,
+  BarChart3,
+  CreditCard,
+  Settings,
+  CircleHelp,
   Database,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -70,18 +70,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Database size={20} />
             <span className="font-label-md text-label-md">Knowledge Base</span>
           </Link>
-          <a className={getSidebarLinkClass("/inbox")} href="#">
+          <Link className={getSidebarLinkClass("/inbox")} href="/inbox">
             <MessageSquare size={20} />
             <span className="font-label-md text-label-md">Inbox</span>
-          </a>
-          <a className={getSidebarLinkClass("/analytics")} href="#">
+          </Link>
+          <Link className={getSidebarLinkClass("/analytics")} href="/analytics">
             <BarChart3 size={20} />
             <span className="font-label-md text-label-md">Analytics</span>
-          </a>
-          <a className={getSidebarLinkClass("/billing")} href="#">
+          </Link>
+          <Link className={getSidebarLinkClass("/billing")} href="/billing">
             <CreditCard size={20} />
             <span className="font-label-md text-label-md">Billing</span>
-          </a>
+          </Link>
         </nav>
 
         {/* Footer Navigation */}
@@ -90,10 +90,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Settings size={20} />
             <span className="font-label-md text-label-md">Settings</span>
           </Link>
-          <a className={getSidebarLinkClass("/help")} href="#">
+          <Link className={getSidebarLinkClass("/help")} href="/help">
             <CircleHelp size={20} />
             <span className="font-label-md text-label-md">Help</span>
-          </a>
+          </Link>
           <div className="flex items-center gap-3 px-4 py-3 mt-4">
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
               {session?.user?.name?.[0]?.toUpperCase() || "U"}
@@ -103,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-label-sm font-label-sm text-secondary truncate">{session?.user?.email || "user@email.com"}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => signOut()}
             className="w-full mt-2 py-2 px-4 text-red-500 font-label-md hover:bg-red-500/10 rounded-lg transition-colors text-left"
           >
@@ -144,10 +144,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Bot size={20} />
           <span className="text-[10px] font-label-sm">Agents</span>
         </Link>
-        <a className={getMobileLinkClass("/inbox")} href="#">
+        <Link className={getMobileLinkClass("/inbox")} href="/inbox">
           <MessageSquare size={20} />
           <span className="text-[10px] font-label-sm">Chat</span>
-        </a>
+        </Link>
         <Link className={getMobileLinkClass("/settings")} href="/settings">
           <Settings size={20} />
           <span className="text-[10px] font-label-sm">Setup</span>

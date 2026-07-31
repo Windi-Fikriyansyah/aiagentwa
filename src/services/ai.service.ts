@@ -174,16 +174,50 @@ export class AIService {
       
       contentParts.push({ text: promptText });
 
-      // 4. Generate Content
-      const response = await ai.models.generateContent({
-        model: this.config.model,
-        contents: contentParts,
-        config: {
-          systemInstruction: currentSystemPrompt,
-          temperature: this.config.temperature,
-          maxOutputTokens: 800, // Increased to prevent response cutoffs
+      // 4. Generate Content (with retry for 503 errors)
+      let response;
+      let retries = 3;
+      let delay = 1000; // start with 1 second delay
+
+      while (retries > 0) {
+        try {
+          response = await ai.models.generateContent({
+            model: this.config.model,
+            contents: contentParts,
+            config: {
+              systemInstruction: currentSystemPrompt,
+              temperature: this.config.temperature,
+              maxOutputTokens: 800, // Increased to prevent response cutoffs
+            }
+          });
+          break; // Success, break the loop
+        } catch (genErr: any) {
+          if (genErr.message && (genErr.message.includes('PERMISSION_DENIED') || genErr.message.includes('not exist') || genErr.message.includes('403'))) {
+            logger.warn('Gemini file access error, falling back to prompt without Knowledge Base files', { error: genErr.message });
+            
+            // Retry without files (only keep text parts)
+            const textOnlyParts = contentParts.filter(p => p.text);
+            response = await ai.models.generateContent({
+              model: this.config.model,
+              contents: textOnlyParts,
+              config: {
+                systemInstruction: currentSystemPrompt,
+                temperature: this.config.temperature,
+                maxOutputTokens: 800,
+              }
+            });
+            break; // Success on fallback, break loop
+          } else if (genErr.message && (genErr.message.includes('503') || genErr.message.includes('UNAVAILABLE') || genErr.message.includes('high demand'))) {
+            retries--;
+            if (retries === 0) throw genErr;
+            logger.warn(`Gemini API overloaded (503). Retrying in ${delay}ms... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // exponential backoff
+          } else {
+            throw genErr; // Other errors, throw immediately
+          }
         }
-      });
+      }
 
       const aiMessage = response.text || 'Mohon maaf, saya tidak dapat menjawab pertanyaan tersebut saat ini.';
       

@@ -13,9 +13,17 @@ export class WebSocketService {
   private currentWhatsAppStatus: ConnectionStatus | null = null;
   private currentQR: string | null = null;
   private currentUser: any = null;
+  private onSendMessageCallback?: (chatId: string, message: string) => Promise<boolean>;
 
   constructor(private port: number = 8080) {
     logger.info('WebSocket Service initialized', { port });
+  }
+
+  /**
+   * Set callback for sending manual messages from HTTP API
+   */
+  setOnSendMessage(callback: (chatId: string, message: string) => Promise<boolean>): void {
+    this.onSendMessageCallback = callback;
   }
 
   /**
@@ -256,8 +264,8 @@ export class WebSocketService {
     const httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
       // CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-internal-auth');
       res.setHeader('Content-Type', 'application/json');
 
       if (req.method === 'OPTIONS') {
@@ -276,6 +284,39 @@ export class WebSocketService {
         };
         res.writeHead(200);
         res.end(JSON.stringify(response));
+        return;
+      }
+
+      if (req.url === '/api/send' && req.method === 'POST') {
+        if (req.headers['x-internal-auth'] !== 'true') {
+          res.writeHead(401);
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+          try {
+            const { chatId, message } = JSON.parse(body);
+            if (!chatId || !message) {
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: 'Missing chatId or message' }));
+              return;
+            }
+            if (this.onSendMessageCallback) {
+              const success = await this.onSendMessageCallback(chatId, message);
+              res.writeHead(success ? 200 : 500);
+              res.end(JSON.stringify({ success }));
+            } else {
+              res.writeHead(500);
+              res.end(JSON.stringify({ error: 'Callback not set' }));
+            }
+          } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          }
+        });
         return;
       }
 
