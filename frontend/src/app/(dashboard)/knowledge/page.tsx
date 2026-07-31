@@ -321,7 +321,7 @@ export default function KnowledgeBasePage() {
             <button className="p-2 hover:bg-surface-container-low rounded-lg transition-colors border border-outline-variant text-on-surface-variant">
               <Filter size={20} />
             </button>
-            <button onClick={() => selectedDevice && fetchSources(selectedDevice)} className="p-2 hover:bg-surface-container-low rounded-lg transition-colors border border-outline-variant text-on-surface-variant">
+            <button onClick={() => selectedDeviceId && fetchSources(selectedDeviceId)} className="p-2 hover:bg-surface-container-low rounded-lg transition-colors border border-outline-variant text-on-surface-variant">
               <RefreshCw size={20} />
             </button>
           </div>

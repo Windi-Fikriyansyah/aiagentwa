@@ -27,6 +27,7 @@ export interface ChatHistory {
  */
 export interface AIResponse {
   message: string;
+  leadStatus?: 'hot' | 'warm' | 'cold';
   confidence: number;
   context: string[];
   timestamp: number;
@@ -78,6 +79,7 @@ export enum ConnectionStatus {
 export interface MessageProcessingResult {
   success: boolean;
   response?: string;
+  leadStatus?: 'hot' | 'warm' | 'cold';
   error?: string;
   processingTime: number;
 }

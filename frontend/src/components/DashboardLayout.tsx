@@ -113,29 +113,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content Canvas */}
-      <main className="md:ml-[280px] min-h-screen p-margin-mobile md:p-margin-desktop pb-24 md:pb-margin-desktop">
+      <main className={`md:ml-[280px] ${pathname === '/inbox' ? 'h-screen max-h-screen overflow-hidden p-0 md:p-4' : 'min-h-screen p-margin-mobile md:p-margin-desktop pb-24 md:pb-margin-desktop'}`}>
         {children}
       </main>
 
-      {/* Footer Anchor */}
-      <footer className="md:ml-[280px] w-full py-stack-lg bg-surface-container-low border-t border-outline-variant/20 mt-stack-lg pb-24 md:pb-stack-lg">
-        <div className="flex flex-col md:flex-row justify-between items-center px-margin-desktop max-w-container-max mx-auto gap-stack-md">
-          <div className="flex items-center gap-2">
-            <Bot className="text-primary" size={24} />
-            <span className="font-headline-md text-headline-md font-bold text-primary">AgentFlow AI</span>
+      {/* Footer Anchor - Hidden on Inbox to prevent scrolling */}
+      {pathname !== '/inbox' && (
+        <footer className="md:ml-[280px] w-full py-stack-lg bg-surface-container-low border-t border-outline-variant/20 mt-stack-lg pb-24 md:pb-stack-lg">
+          <div className="flex flex-col md:flex-row justify-between items-center px-margin-desktop max-w-container-max mx-auto gap-stack-md">
+            <div className="flex items-center gap-2">
+              <Bot className="text-primary" size={24} />
+              <span className="font-headline-md text-headline-md font-bold text-primary">AgentFlow AI</span>
+            </div>
+            <p className="font-body-sm text-body-sm text-secondary">© 2024 AgentFlow AI. All rights reserved.</p>
+            <div className="flex gap-gutter">
+              <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Privacy Policy</a>
+              <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Terms of Service</a>
+              <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Status</a>
+              <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Contact</a>
+            </div>
           </div>
-          <p className="font-body-sm text-body-sm text-secondary">© 2024 AgentFlow AI. All rights reserved.</p>
-          <div className="flex gap-gutter">
-            <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Privacy Policy</a>
-            <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Terms of Service</a>
-            <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Status</a>
-            <a className="text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm" href="#">Contact</a>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
       {/* Mobile Navigation (BottomNavBar) */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/20 flex justify-around items-center h-16 z-50">
+      <nav className={`md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/20 flex justify-around items-center h-16 z-50 ${pathname === '/inbox' ? 'hidden' : ''}`}>
         <Link className={getMobileLinkClass("/")} href="/">
           <LayoutDashboard size={20} />
           <span className="text-[10px] font-label-sm">Home</span>

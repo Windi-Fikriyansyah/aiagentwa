@@ -104,6 +104,7 @@ model Conversation {
   deviceId    String    // Which device this conversation belongs to
   device      Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   status      String    @default("open") // open, closed, human_needed
+  leadStatus  String    @default("cold") // hot, warm, cold
   lastMessageAt DateTime @default(now())
   messages    Message[]
   

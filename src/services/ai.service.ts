@@ -174,6 +174,9 @@ export class AIService {
       
       contentParts.push({ text: promptText });
 
+      // JSON enforcement prompt
+      const jsonSystemPrompt = currentSystemPrompt + `\n\nPENTING: Anda harus selalu merespons dalam format JSON murni tanpa markdown tambahan. Format yang diwajibkan: {"balasan": "teks balasan Anda ke pelanggan", "status": "hot" | "warm" | "cold"}. Gunakan "hot" jika pelanggan ingin membeli/tanya harga, "warm" jika tertarik/tanya fitur detail, "cold" jika sekadar menyapa/tidak terkait penjualan.`;
+
       // 4. Generate Content (with retry for 503 errors)
       let response;
       let retries = 3;
@@ -185,9 +188,10 @@ export class AIService {
             model: this.config.model,
             contents: contentParts,
             config: {
-              systemInstruction: currentSystemPrompt,
+              systemInstruction: jsonSystemPrompt,
               temperature: this.config.temperature,
               maxOutputTokens: 800, // Increased to prevent response cutoffs
+              responseMimeType: "application/json",
             }
           });
           break; // Success, break the loop
@@ -201,9 +205,10 @@ export class AIService {
               model: this.config.model,
               contents: textOnlyParts,
               config: {
-                systemInstruction: currentSystemPrompt,
+                systemInstruction: jsonSystemPrompt,
                 temperature: this.config.temperature,
                 maxOutputTokens: 800,
+                responseMimeType: "application/json",
               }
             });
             break; // Success on fallback, break loop
@@ -219,10 +224,24 @@ export class AIService {
         }
       }
 
-      const aiMessage = response.text || 'Mohon maaf, saya tidak dapat menjawab pertanyaan tersebut saat ini.';
+      let aiMessage = 'Mohon maaf, saya tidak dapat menjawab pertanyaan tersebut saat ini.';
+      let leadStatus: 'hot' | 'warm' | 'cold' = 'cold';
+      
+      try {
+        if (response.text) {
+          const parsed = JSON.parse(response.text);
+          aiMessage = parsed.balasan || aiMessage;
+          leadStatus = parsed.status || 'cold';
+        }
+      } catch (e) {
+        logger.error('Failed to parse Gemini JSON response', { text: response.text });
+        // Fallback if not valid JSON (shouldn't happen with responseMimeType)
+        aiMessage = response.text || aiMessage;
+      }
       
       const aiResponse: AIResponse = {
         message: aiMessage,
+        leadStatus,
         confidence: 0.9, 
         context: this.extractContext(chatHistory),
         timestamp: Date.now(),

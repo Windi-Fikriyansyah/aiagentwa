@@ -98,7 +98,7 @@ export default function InboxPage() {
   const activeConv = conversations.find(c => c.id === selectedConvId);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/30 shadow-sm">
+    <div className="flex flex-col h-full bg-surface-container-lowest md:rounded-xl overflow-hidden border-0 md:border border-outline-variant/30 md:shadow-sm">
       {/* Dashboard TopBar */}
       <header className="h-16 border-b border-outline-variant/20 flex items-center justify-between px-gutter bg-surface-container-lowest/50 backdrop-blur-md sticky top-0 z-30 shrink-0">
         <div className="flex items-center gap-4">
@@ -140,9 +140,12 @@ export default function InboxPage() {
                     </span>
                   </div>
                   <p className="text-body-sm text-secondary truncate">{lastMsg ? lastMsg.content : "No messages"}</p>
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     {lastMsg?.sender === 'ai' && <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase">AI Handled</span>}
                     {conv.status === 'human_needed' && <span className="px-2 py-0.5 bg-tertiary-container/30 text-tertiary text-[10px] font-bold rounded-full uppercase">Human Needed</span>}
+                    {conv.leadStatus === 'hot' && <span className="px-2 py-0.5 bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-bold rounded-full uppercase flex items-center gap-1">🔥 Hot</span>}
+                    {conv.leadStatus === 'warm' && <span className="px-2 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-[10px] font-bold rounded-full uppercase flex items-center gap-1">🌟 Warm</span>}
+                    {conv.leadStatus === 'cold' && <span className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-full uppercase flex items-center gap-1">❄️ Cold</span>}
                   </div>
                 </div>
               );

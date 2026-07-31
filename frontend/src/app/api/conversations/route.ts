@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { deviceJid, customerJid, customerName, message } = body;
+    const { deviceJid, customerJid, customerName, leadStatus, message } = body;
 
     if (!deviceJid || !customerJid || !message) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -67,6 +67,12 @@ export async function POST(request: Request) {
     }
 
     // 2. Upsert the conversation
+    const updateData: any = {
+      lastMessageAt: new Date(message.timestamp || Date.now()),
+    };
+    if (customerName) updateData.name = customerName;
+    if (leadStatus) updateData.leadStatus = leadStatus;
+
     const conversation = await prisma.conversation.upsert({
       where: {
         jid_deviceId: {
@@ -74,15 +80,13 @@ export async function POST(request: Request) {
           deviceId: device.id,
         },
       },
-      update: {
-        name: customerName || undefined,
-        lastMessageAt: new Date(message.timestamp || Date.now()),
-      },
+      update: updateData,
       create: {
         jid: customerJid,
         name: customerName || "Unknown Contact",
         deviceId: device.id,
         status: "open",
+        leadStatus: leadStatus || "cold",
         lastMessageAt: new Date(message.timestamp || Date.now()),
       },
     });

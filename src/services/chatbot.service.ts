@@ -164,8 +164,8 @@ export class ChatbotService {
           this.chatHistoryService.addMessage(message.to, botMessage);
           this.webSocketService.sendMessageSent(botMessage);
           
-          // Sync AI response to database
-          this.syncMessageToDb(botMessage, "ai");
+          // Sync bot message to database (and update leadStatus!)
+          this.syncMessageToDb(botMessage, "ai", result.leadStatus);
 
           logger.info('Response sent successfully', { 
             to: message.from, 
@@ -228,6 +228,7 @@ export class ChatbotService {
       return {
         success: true,
         response: aiResponse.message,
+        leadStatus: aiResponse.leadStatus,
         processingTime,
       };
 
@@ -256,7 +257,7 @@ export class ChatbotService {
   /**
    * Sync message to database via API
    */
-  private async syncMessageToDb(message: WhatsAppMessage, sender: "user" | "ai" | "human"): Promise<void> {
+  private async syncMessageToDb(message: WhatsAppMessage, sender: "user" | "ai" | "human", leadStatus?: 'hot' | 'warm' | 'cold'): Promise<void> {
     try {
       const user = this.whatsappService.getUser();
       if (!user || !user.id) return;
@@ -275,6 +276,7 @@ export class ChatbotService {
           deviceJid,
           customerJid,
           customerName,
+          leadStatus,
           message: {
             ...message,
             sender
