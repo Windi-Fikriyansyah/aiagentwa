@@ -168,6 +168,11 @@ export async function POST(request: Request) {
           },
         });
         
+        // RAG Processing for OpenRouter
+        const { processAndUploadRAG } = await import("@/lib/rag");
+        // Execute asynchronously so it doesn't block the response
+        processAndUploadRAG(source.id, buffer, "text/plain", url).catch(console.error);
+        
         return NextResponse.json(source);
       } catch (err: any) {
         console.error("Web scraping failed:", err);
@@ -256,6 +261,12 @@ export async function POST(request: Request) {
           deviceId,
         },
       });
+
+      // RAG Processing for OpenRouter
+      const { processAndUploadRAG } = await import("@/lib/rag");
+      // Process RAG synchronously to catch errors
+      await processAndUploadRAG(source.id, buffer, file.type, "");
+
       return NextResponse.json(source);
     }
 

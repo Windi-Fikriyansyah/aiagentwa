@@ -31,6 +31,10 @@ export async function DELETE(
       where: { id },
     });
 
+    // Delete from Pinecone RAG Database
+    const { deleteRAGSource } = await import("@/lib/rag");
+    await deleteRAGSource(id);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete knowledge source:", error);

@@ -10,11 +10,13 @@ dotenv.config();
  */
 const envSchema = Joi.object({
   PORT: Joi.number().default(3000),
-  AI_PROVIDER: Joi.string().valid('openai', 'gemini').default('openai'),
+  AI_PROVIDER: Joi.string().valid('openai', 'gemini', 'openrouter').default('openai'),
   OPENAI_API_KEY: Joi.string().allow(''),
   OPENAI_MODEL: Joi.string().default('gpt-3.5-turbo'),
   GEMINI_API_KEY: Joi.string().allow(''),
   GEMINI_MODEL: Joi.string().default('gemini-pro'),
+  OPENROUTER_API_KEY: Joi.string().allow(''),
+  OPENROUTER_MODEL: Joi.string().default('google/gemini-2.5-flash'),
   MAX_HISTORY_LENGTH: Joi.number().default(50),
   RESPONSE_DELAY: Joi.number().default(1000),
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),

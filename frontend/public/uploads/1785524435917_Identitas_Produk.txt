@@ -1,0 +1,266 @@
+Identitas Produk
+
+Nama Produk: Wamaps
+
+Deskripsi Singkat
+
+Wamaps adalah aplikasi untuk membantu pebisnis mencari leads bisnis secara otomatis dari Google Maps, LinkedIn, Facebook, dan Instagram, kemudian mengirimkan WhatsApp Broadcast tanpa perlu menyimpan nomor satu per satu.
+
+Wamaps tersedia dalam versi:
+
+Web
+Software Desktop
+Tujuan Produk
+
+Wamaps membantu bisnis untuk:
+
+mencari calon pelanggan baru
+mempercepat proses prospecting
+menghemat waktu pencarian leads
+melakukan WhatsApp marketing secara otomatis
+meningkatkan peluang closing
+Target Pengguna
+
+Wamaps cocok digunakan oleh:
+
+Sales
+Marketing
+Digital Agency
+Freelancer
+Konsultan
+Agen Properti
+Franchise
+Distributor
+Exportir
+Researcher
+Surveyor
+UMKM
+Owner bisnis
+Masalah yang Diselesaikan
+
+Wamaps membantu mengatasi masalah seperti:
+
+sulit mencari leads baru
+scraping manual yang memakan waktu
+data bisnis tidak valid
+harus save nomor satu per satu
+broadcast WhatsApp yang ribet
+promosi manual yang tidak efisien
+Fitur Utama
+1. Auto Scraping Google Maps
+
+Mengambil data bisnis berdasarkan keyword dan lokasi.
+
+Contoh:
+
+Apotek Jakarta
+Klinik Bandung
+Bengkel Surabaya
+
+Data yang diperoleh meliputi:
+
+Nama bisnis
+Alamat
+Nomor telepon / WhatsApp
+Informasi bisnis
+
+Unlimited scraping.
+
+2. Auto Scraping LinkedIn
+
+Mengambil data dari LinkedIn seperti:
+
+Profil profesional
+Perusahaan
+Staff perusahaan
+Komentar posting
+User
+Koneksi
+Lokasi target
+
+Unlimited.
+
+3. Auto Scraping Facebook
+
+Mengambil leads bisnis dari Facebook berdasarkan keyword.
+
+Unlimited.
+
+4. Auto Scraping Instagram
+
+Mengambil leads bisnis dari Instagram berdasarkan keyword.
+
+Unlimited.
+
+5. WhatsApp Broadcast
+
+Mengirim pesan WhatsApp massal kepada leads.
+
+Fitur:
+
+tidak perlu save nomor
+kirim massal
+otomatis
+6. Auto Posting Facebook Group
+
+Posting otomatis ke banyak grup Facebook hanya dengan satu klik.
+
+7. Database Leads
+
+Semua leads tersimpan dengan rapi.
+
+Data meliputi:
+
+nama
+alamat
+nomor WhatsApp
+8. Export Excel
+
+Semua data dapat diekspor ke Excel.
+
+9. Multiple Message Templates
+
+Membuat banyak template pesan untuk berbagai campaign.
+
+10. Free Update
+
+Update fitur gratis selamanya.
+
+Cara Kerja
+
+Langkah 1
+
+Masukkan:
+
+keyword
+lokasi
+
+Contoh:
+
+"Apotek Jakarta"
+
+Langkah 2
+
+Klik scraping.
+
+Wamaps akan mengambil data bisnis secara otomatis.
+
+Langkah 3
+
+Kirim WhatsApp Broadcast langsung kepada leads yang telah didapat.
+
+Harga
+Wamaps Pro Lifetime
+
+Harga promo:
+
+Rp249.000
+
+Harga normal:
+
+Rp499.000
+
+Diskon:
+
+50%
+
+Sistem Pembayaran
+
+Sekali bayar.
+
+Tidak ada biaya bulanan.
+
+Lifetime.
+
+Yang Didapat
+Versi Web
+Versi Software
+Scraping Google Maps Unlimited
+Scraping LinkedIn Unlimited
+Scraping Facebook Unlimited
+Scraping Instagram Unlimited
+WhatsApp Broadcast
+Auto Posting Facebook Group
+Export Excel
+Multiple Template
+Update Gratis Selamanya
+Garansi
+
+Garansi uang kembali selama 7 hari.
+
+FAQ
+Apakah nomor yang didapat valid?
+
+Ya.
+
+Wamaps mengambil data bisnis aktif yang tersedia secara real-time sehingga data yang diperoleh lebih relevan untuk dihubungi.
+
+Apakah aman untuk WhatsApp?
+
+Ya.
+
+Wamaps menggunakan metode Human Like Sending yang memiliki:
+
+delay antar pesan
+simulasi mengetik
+
+Tujuannya agar proses pengiriman terlihat lebih natural dan membantu meminimalkan risiko akun WhatsApp terkena pembatasan. Namun, penggunaan WhatsApp tetap harus mengikuti kebijakan WhatsApp.
+
+Apakah cocok untuk pemula?
+
+Sangat cocok.
+
+Tidak memerlukan kemampuan coding maupun pengalaman digital marketing.
+
+Apakah ada biaya bulanan?
+
+Tidak.
+
+Wamaps menggunakan sistem sekali bayar (Lifetime Deal).
+
+Berapa lama akses dikirim?
+
+Akses dikirim otomatis setelah pembayaran berhasil.
+
+Apakah update gratis?
+
+Ya.
+
+Update fitur gratis selamanya.
+
+Apakah ada garansi?
+
+Ya.
+
+Garansi uang kembali selama 7 hari.
+
+Keunggulan Wamaps
+Unlimited scraping
+Tidak perlu coding
+Tidak perlu save nomor
+Broadcast otomatis
+Database leads rapi
+Export Excel
+Lifetime
+Tanpa biaya bulanan
+Dua versi (Web & Software)
+Update gratis selamanya
+Informasi Penjualan
+
+Jumlah pengguna:
+
+500+ pebisnis Indonesia.
+
+Call To Action
+
+Jika calon pelanggan ingin membeli, arahkan dengan jawaban seperti:
+
+Wamaps saat ini tersedia dengan harga promo Rp249.000 (harga normal Rp499.000). Pembelian cukup sekali bayar dan mendapatkan akses lifetime, termasuk update fitur gratis selamanya. Jika ingin mengamankan harga promo, silakan klik tombol pembelian yang tersedia pada halaman Wamaps.
+
+Link Pembelian
+
+Halaman Pembelian Resmi Wamaps
+
+https://wamapss.com
+
+Jika pengguna ingin membeli Wamaps, AI dapat memberikan link di atas dan menjelaskan bahwa pembelian dilakukan melalui website resmi.

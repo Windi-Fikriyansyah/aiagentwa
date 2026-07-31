@@ -60,9 +60,36 @@ export class AIService {
     const startTime = Date.now();
     logger.debug('Generating OpenAI response', { message, historyLength: chatHistory.length, receiverJid });
     try {
+      // 1. Fetch custom system prompt if available
+      let currentSystemPrompt = this.config.systemPrompt;
+      if (receiverJid) {
+        try {
+          const deviceRes = await fetch(`http://localhost:3000/api/devices?jid=${receiverJid}`, {
+            headers: { "x-internal-auth": "true" }
+          });
+          if (deviceRes.ok) {
+            const devices = await deviceRes.json();
+            if (devices && devices.length > 0 && devices[0].systemPrompt) {
+              currentSystemPrompt = devices[0].systemPrompt;
+            }
+          }
+        } catch (e) {
+          logger.warn('Failed to fetch device system prompt for OpenAI/OpenRouter', { error: e });
+        }
+      }
+
+      // 2. Retrieve RAG Context
+      const { retrieveRelevantContext } = await import('../utils/rag');
+      const ragContext = await retrieveRelevantContext(message);
+      
+      let finalSystemPrompt = currentSystemPrompt;
+      if (ragContext) {
+        finalSystemPrompt += `\n\nGunakan referensi dokumen berikut untuk menjawab jika relevan:\n${ragContext}`;
+      }
+
       const conversationContext = this.buildConversationContext(chatHistory);
       const messages = [
-        { role: 'system' as const, content: this.config.systemPrompt },
+        { role: 'system' as const, content: finalSystemPrompt },
         ...conversationContext,
         { role: 'user' as const, content: message },
       ];
