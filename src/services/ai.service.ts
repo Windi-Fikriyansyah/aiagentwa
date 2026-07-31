@@ -87,25 +87,47 @@ export class AIService {
         finalSystemPrompt += `\n\nGunakan referensi dokumen berikut untuk menjawab jika relevan:\n${ragContext}`;
       }
 
+      // JSON enforcement prompt
+      const jsonSystemPrompt = finalSystemPrompt + `\n\nPENTING: Anda harus merespons dalam format JSON murni. Format yang diwajibkan: {"balasan": "teks balasan Anda ke pelanggan", "status": "hot" | "warm" | "cold"}. Gunakan "hot" jika pelanggan ingin membeli/tanya harga/transaksi, "warm" jika tertarik/tanya fitur detail, "cold" jika sekadar menyapa/tidak terkait penjualan.`;
+
       const conversationContext = this.buildConversationContext(chatHistory);
       const messages = [
-        { role: 'system' as const, content: finalSystemPrompt },
+        { role: 'system' as const, content: jsonSystemPrompt },
         ...conversationContext,
         { role: 'user' as const, content: message },
       ];
+      
       const completion = await this.openai.chat.completions.create({
         model: this.config.model,
         messages,
         max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
+        temperature: this.config.temperature
       });
-      const aiMessage = completion.choices[0]?.message?.content || 'I apologize, but I cannot generate a response at the moment.';
+      
+      let aiMessage = completion.choices[0]?.message?.content || '{"balasan": "I apologize, but I cannot generate a response at the moment.", "status": "cold"}';
+      
+      let parsed = { balasan: aiMessage, status: 'cold' };
+      try {
+        let rawText = aiMessage;
+        if (rawText.startsWith('```json')) rawText = rawText.replace(/```json|```/g, '').trim();
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        logger.warn('Failed to parse OpenAI JSON response', { rawText: aiMessage });
+      }
+
+      let leadStatus: 'hot' | 'warm' | 'cold' = 'cold';
+      if (parsed.status === 'hot' || parsed.status === 'warm') {
+        leadStatus = parsed.status;
+      }
+
       const response: AIResponse = {
-        message: aiMessage,
+        message: parsed.balasan || 'I apologize, but I cannot generate a response at the moment.',
+        leadStatus,
         confidence: this.calculateConfidence(completion),
         context: this.extractContext(chatHistory),
         timestamp: Date.now(),
       };
+      
       logger.info('OpenAI response generated', { processingTime: Date.now() - startTime });
       return response;
     } catch (error) {
