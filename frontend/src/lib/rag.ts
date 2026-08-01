@@ -1,4 +1,5 @@
 import { Pinecone } from '@pinecone-database/pinecone';
+import prisma from '@/lib/prisma';
 
 export async function processAndUploadRAG(
   sourceId: string, 
@@ -7,10 +8,15 @@ export async function processAndUploadRAG(
   urlContext?: string
 ) {
   try {
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.warn("Skipping RAG: OPENROUTER_API_KEY not set");
+    const user = await prisma.user.findFirst();
+    if (!user?.openrouterApiKey || !user?.openrouterEmbedModel) {
+      console.warn("Skipping RAG: OpenRouter API Key or Embed Model not configured in Settings");
       return;
     }
+    
+    const OPENROUTER_API_KEY = user.openrouterApiKey;
+    const EMBED_MODEL = user.openrouterEmbedModel;
+
     if (!process.env.PINECONE_API_KEY) {
       console.warn("Skipping RAG: PINECONE_API_KEY not set");
       return;
@@ -52,11 +58,11 @@ export async function processAndUploadRAG(
       const embeddingsRes = await fetch('https://openrouter.ai/api/v1/embeddings', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'nvidia/llama-nemotron-embed-vl-1b-v2:free',
+          model: EMBED_MODEL,
           input: batchChunks
         })
       });

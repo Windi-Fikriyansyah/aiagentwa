@@ -90,6 +90,34 @@ export class AIService {
       // JSON enforcement prompt
       const jsonSystemPrompt = finalSystemPrompt + `\n\nPENTING: Anda harus merespons dalam format JSON murni. Format yang diwajibkan: {"balasan": "teks balasan Anda ke pelanggan", "status": "hot" | "warm" | "cold"}. Gunakan "hot" jika pelanggan ingin membeli/tanya harga/transaksi, "warm" jika tertarik/tanya fitur detail, "cold" jika sekadar menyapa/tidak terkait penjualan.`;
 
+      // Fetch dynamic config
+      let activeModel = this.config.model;
+      let activeClient = this.openai;
+
+      try {
+        const settingsRes = await fetch('http://localhost:3000/api/settings', {
+          headers: { "x-internal-auth": "true" }
+        });
+        const user = await settingsRes.json();
+        
+        if (user && user.openrouterApiKey && user.openrouterModel) {
+          activeModel = user.openrouterModel;
+          activeClient = new OpenAI({ 
+            baseURL: "https://openrouter.ai/api/v1",
+            apiKey: user.openrouterApiKey,
+            defaultHeaders: {
+              "HTTP-Referer": "http://localhost:3000",
+              "X-Title": "WhatsApp AI Agent",
+            }
+          });
+        } else {
+          throw new Error("Missing OpenRouter config in Settings");
+        }
+      } catch (e: any) {
+        logger.error('Failed to load AI config from database', { error: e.message });
+        throw new Error("Konfigurasi AI belum lengkap. Harap isi OpenRouter API Key dan Model di menu Settings.");
+      }
+
       const conversationContext = this.buildConversationContext(chatHistory);
       const messages = [
         { role: 'system' as const, content: jsonSystemPrompt },
@@ -97,8 +125,8 @@ export class AIService {
         { role: 'user' as const, content: message },
       ];
       
-      const completion = await this.openai.chat.completions.create({
-        model: this.config.model,
+      const completion = await activeClient.chat.completions.create({
+        model: activeModel,
         messages,
         max_tokens: this.config.maxTokens,
         temperature: this.config.temperature

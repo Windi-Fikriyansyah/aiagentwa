@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Smartphone, RefreshCcw, CheckCircle2, ShieldAlert, Bot, Wifi, WifiOff } from "lucide-react";
 
+import { getProfile } from "../settings/actions";
+
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'authenticating' | 'ready' | 'backend_offline';
 
 interface DeviceInfo {
@@ -22,6 +24,7 @@ export default function AgentsPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [devices, setDevices] = useState<DeviceInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAiConfigured, setIsAiConfigured] = useState<boolean | null>(null);
   
   const [editingDevice, setEditingDevice] = useState<DeviceInfo | null>(null);
   const [editPromptValue, setEditPromptValue] = useState("");
@@ -130,11 +133,28 @@ export default function AgentsPage() {
 
   // Poll status every 5 seconds
   useEffect(() => {
-    fetchStatus();
-    fetchDevices();
-    const interval = setInterval(fetchStatus, 5000);
+    // Check AI config first
+    getProfile().then(profile => {
+      const isConfigured = !!(profile?.openrouterApiKey && profile?.openrouterModel && profile?.openrouterEmbedModel);
+      setIsAiConfigured(isConfigured);
+      
+      if (isConfigured) {
+        fetchStatus();
+        fetchDevices();
+      }
+    }).catch(err => {
+      console.error("Failed to fetch profile", err);
+      setIsAiConfigured(false);
+    });
+
+    const interval = setInterval(() => {
+      if (isAiConfigured) {
+        fetchStatus();
+      }
+    }, 5000);
+    
     return () => clearInterval(interval);
-  }, [fetchStatus]);
+  }, [fetchStatus, isAiConfigured]);
 
   const getStatusColor = () => {
     switch (status) {
@@ -194,7 +214,15 @@ export default function AgentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-lg">
         {/* Left Side: QR Code Area */}
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-8 flex flex-col items-center justify-center min-h-[400px] shadow-sm">
-          {isLoading ? (
+          {isAiConfigured === false ? (
+            <div className="flex flex-col items-center gap-4 text-red-500 text-center">
+              <ShieldAlert size={48} />
+              <h3 className="font-headline-sm text-headline-sm">Konfigurasi AI Belum Lengkap</h3>
+              <p className="font-body-sm text-body-sm text-secondary max-w-[280px]">
+                Anda harus mengisi API Key dan Model OpenRouter di halaman <a href="/settings" className="text-primary underline hover:text-primary/80">Settings</a> terlebih dahulu sebelum dapat menghubungkan WhatsApp.
+              </p>
+            </div>
+          ) : isLoading ? (
             <div className="flex flex-col items-center gap-4 text-secondary text-center">
               <RefreshCcw size={48} className="animate-spin opacity-50" />
               <p className="font-body-md text-body-md">Memuat status...</p>

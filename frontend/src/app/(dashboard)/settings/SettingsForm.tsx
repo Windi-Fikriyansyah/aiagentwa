@@ -39,6 +39,9 @@ type Profile = {
   waNotifications: boolean;
   pushNotifications: boolean;
   twoFactor: boolean;
+  openrouterApiKey?: string;
+  openrouterModel?: string;
+  openrouterEmbedModel?: string;
 };
 
 export default function SettingsForm({ initialProfile }: { initialProfile: Profile }) {
@@ -175,6 +178,53 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
                         <option>WIT (Jayapura) GMT+9</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Configuration Section */}
+              <div className="bg-surface-container-lowest p-stack-md rounded-xl border border-outline-variant shadow-sm">
+                <div className="flex items-center gap-4 mb-8">
+                  <Bot className="text-primary" size={24} />
+                  <h3 className="font-headline-md text-headline-md">Konfigurasi AI (OpenRouter)</h3>
+                </div>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="font-label-md text-label-md text-on-surface block">OpenRouter API Key *</label>
+                    <input 
+                      name="openrouterApiKey"
+                      value={profile.openrouterApiKey || ""}
+                      onChange={handleChange}
+                      placeholder="sk-or-v1-..."
+                      className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" 
+                      type="password" 
+                      required
+                    />
+                    <p className="font-body-sm text-body-sm text-on-surface-variant">API Key ini wajib diisi untuk menggunakan bot WhatsApp dan fitur RAG.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-label-md text-label-md text-on-surface block">Model Chat (Teks) *</label>
+                    <input 
+                      name="openrouterModel"
+                      value={profile.openrouterModel || ""}
+                      onChange={handleChange}
+                      placeholder="Contoh: google/gemini-2.5-flash"
+                      className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" 
+                      type="text" 
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-label-md text-label-md text-on-surface block">Model Embedding (RAG) *</label>
+                    <input 
+                      name="openrouterEmbedModel"
+                      value={profile.openrouterEmbedModel || ""}
+                      onChange={handleChange}
+                      placeholder="Contoh: nvidia/llama-nemotron-embed-vl-1b-v2:free"
+                      className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" 
+                      type="text" 
+                      required
+                    />
                   </div>
                 </div>
               </div>

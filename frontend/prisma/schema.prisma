@@ -22,6 +22,9 @@ model User {
   pushNotifications  Boolean   @default(false)
   twoFactor          Boolean   @default(false)
   mayarApiKey        String?
+  openrouterApiKey   String?
+  openrouterModel    String?
+  openrouterEmbedModel String?
 
   accounts      Account[]
   sessions      Session[]

@@ -3,9 +3,19 @@ import { logger } from './logger';
 
 export async function retrieveRelevantContext(query: string, topK: number = 3): Promise<string> {
   try {
-    if (!process.env.OPENROUTER_API_KEY || !process.env.PINECONE_API_KEY) {
+    // Fetch AI config from Next.js backend
+    const settingsRes = await fetch('http://localhost:3000/api/settings', {
+      headers: { "x-internal-auth": "true" }
+    });
+    const user = await settingsRes.json();
+
+    if (!user?.openrouterApiKey || !user?.openrouterEmbedModel || !process.env.PINECONE_API_KEY) {
+      logger.warn('RAG retrieval skipped: Missing OpenRouter config or PINECONE_API_KEY');
       return '';
     }
+
+    const OPENROUTER_API_KEY = user.openrouterApiKey;
+    const EMBED_MODEL = user.openrouterEmbedModel;
 
     const pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY,
@@ -17,11 +27,11 @@ export async function retrieveRelevantContext(query: string, topK: number = 3): 
     const embeddingsRes = await fetch('https://openrouter.ai/api/v1/embeddings', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'nvidia/llama-nemotron-embed-vl-1b-v2:free',
+        model: EMBED_MODEL,
         input: query
       })
     });

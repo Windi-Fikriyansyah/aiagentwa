@@ -39,6 +39,9 @@ export async function updateProfile(data: any) {
           waNotifications: data.waNotifications,
           pushNotifications: data.pushNotifications,
           twoFactor: data.twoFactor,
+          openrouterApiKey: data.openrouterApiKey,
+          openrouterModel: data.openrouterModel,
+          openrouterEmbedModel: data.openrouterEmbedModel,
         }
       });
       return { success: true, profile: updated };
@@ -55,6 +58,9 @@ export async function updateProfile(data: any) {
           waNotifications: data.waNotifications,
           pushNotifications: data.pushNotifications,
           twoFactor: data.twoFactor,
+          openrouterApiKey: data.openrouterApiKey,
+          openrouterModel: data.openrouterModel,
+          openrouterEmbedModel: data.openrouterEmbedModel,
         }
       });
       return { success: true, profile: created };
