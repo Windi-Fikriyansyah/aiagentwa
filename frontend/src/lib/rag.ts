@@ -31,7 +31,7 @@ export async function processAndUploadRAG(
 
     // 1. Extract Text
     if (mimeType === 'application/pdf') {
-      const pdfParseModule = await import('pdf-parse');
+      const pdfParseModule: any = await import('pdf-parse');
       const pdfParse = pdfParseModule.default || pdfParseModule;
       const pdfData = await pdfParse(buffer);
       textContent = pdfData.text;

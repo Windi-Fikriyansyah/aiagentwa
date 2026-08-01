@@ -9,6 +9,9 @@ export default async function SettingsPage() {
     email: profile.email || "",
     phone: profile.phone || "",
     timezone: profile.timezone || "Asia/Jakarta",
+    openrouterApiKey: profile.openrouterApiKey || undefined,
+    openrouterModel: profile.openrouterModel || undefined,
+    openrouterEmbedModel: profile.openrouterEmbedModel || undefined,
   } : {
     id: "",
     name: "",
@@ -19,7 +22,10 @@ export default async function SettingsPage() {
     emailNotifications: true,
     waNotifications: true,
     pushNotifications: false,
-    twoFactor: false
+    twoFactor: false,
+    openrouterApiKey: undefined,
+    openrouterModel: undefined,
+    openrouterEmbedModel: undefined,
   };
   
   return (
