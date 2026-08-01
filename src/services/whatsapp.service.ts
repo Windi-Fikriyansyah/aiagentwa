@@ -38,7 +38,9 @@ export class WhatsAppService {
       logger.info('Initializing WhatsApp connection...');
       this.updateConnectionStatus(ConnectionStatus.CONNECTING);
 
-      const { state, saveCreds } = await useMultiFileAuthState('.whatsapp-session');
+      const path = await import('path');
+      const sessionPath = path.default.resolve(__dirname, '../../.whatsapp-session');
+      const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
       
       this.sock = makeWASocket({
         auth: state,
@@ -84,7 +86,7 @@ export class WhatsAppService {
             // Delete old session
             const fs = await import('fs');
             const path = await import('path');
-            const sessionPath = path.default.resolve('.whatsapp-session');
+            const sessionPath = path.default.resolve(__dirname, '../../.whatsapp-session');
             if (fs.existsSync(sessionPath)) {
               fs.rmSync(sessionPath, { recursive: true, force: true });
               logger.info('Old session deleted');
