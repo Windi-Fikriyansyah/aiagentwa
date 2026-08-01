@@ -96,13 +96,22 @@ export async function DELETE(request: Request) {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     
-    if (!userId) {
+    const internalKey = request.headers.get("x-internal-auth");
+    const isInternal = internalKey === "true";
+
+    if (!userId && !isInternal) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.device.deleteMany({
-      where: { userId }
-    });
+    if (isInternal) {
+      // Internal call from backend: delete all devices
+      await prisma.device.deleteMany({});
+    } else {
+      // User call: delete only their devices
+      await prisma.device.deleteMany({
+        where: { userId }
+      });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete devices:", error);

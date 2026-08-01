@@ -83,6 +83,18 @@ export class WhatsAppService {
             logger.info('Device logged out or removed. Clearing session and restarting for new QR...');
             this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
             
+            // Delete device from database
+            try {
+              const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+              await fetch(`${frontendUrl}/api/devices`, {
+                method: 'DELETE',
+                headers: { 'x-internal-auth': 'true' }
+              });
+              logger.info('Device record deleted from database');
+            } catch (dbErr) {
+              logger.error('Failed to delete device from database', { error: dbErr instanceof Error ? dbErr.message : 'Unknown' });
+            }
+
             // Delete old session
             const fs = await import('fs');
             const path = await import('path');
