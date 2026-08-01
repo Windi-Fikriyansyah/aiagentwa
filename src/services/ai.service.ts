@@ -457,24 +457,7 @@ export class AIService {
    * Test AI service connectivity
    */
   async testConnection(): Promise<boolean> {
-    if (this.config.provider === 'openai') {
-      try {
-        await this.openai.models.list();
-        logger.info('OpenAI service connection test successful');
-        return true;
-      } catch (error) {
-        logger.error('OpenAI service connection test failed', { error: error instanceof Error ? error.message : 'Unknown error' });
-        return false;
-      }
-    } else {
-      // For Gemini, just check if API key is set
-      if (this.config.apiKey) {
-        logger.info('Gemini service connection test (API key present)');
-        return true;
-      } else {
-        logger.error('Gemini service connection test failed: API key missing');
-        return false;
-      }
-    }
+    logger.info('AI service connection test bypassed (using dynamic per-user API keys)');
+    return true;
   }
 } 
