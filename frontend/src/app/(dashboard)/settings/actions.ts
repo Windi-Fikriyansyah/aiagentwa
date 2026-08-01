@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 export async function getProfile() {
   // Ambil profil pertama (karena ini contoh)
@@ -44,6 +45,7 @@ export async function updateProfile(data: any) {
           openrouterEmbedModel: data.openrouterEmbedModel,
         }
       });
+      revalidatePath("/settings");
       return { success: true, profile: updated };
     } else {
       // Create new
@@ -63,6 +65,7 @@ export async function updateProfile(data: any) {
           openrouterEmbedModel: data.openrouterEmbedModel,
         }
       });
+      revalidatePath("/settings");
       return { success: true, profile: created };
     }
   } catch (error) {
