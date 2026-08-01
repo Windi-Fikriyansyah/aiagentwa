@@ -324,7 +324,7 @@ export class WebSocketService {
       res.end(JSON.stringify({ error: 'Not found' }));
     });
 
-    httpServer.listen(httpPort, () => {
+    httpServer.listen(httpPort, '0.0.0.0', () => {
       logger.info('HTTP status API started', { port: httpPort });
     });
   }
