@@ -24,7 +24,8 @@ export async function POST(
     }
 
     // Call the backend API
-    const backendRes = await fetch("http://localhost:8081/api/send", {
+    const backendApiUrl = process.env.BACKEND_API_URL || "http://127.0.0.1:8081";
+    const backendRes = await fetch(`${backendApiUrl}/api/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

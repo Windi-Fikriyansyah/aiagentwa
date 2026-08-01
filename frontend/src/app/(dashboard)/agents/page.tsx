@@ -232,7 +232,7 @@ export default function AgentsPage() {
               <WifiOff size={48} />
               <h3 className="font-headline-sm text-headline-sm">Server Backend Offline</h3>
               <p className="font-body-sm text-body-sm text-secondary max-w-[280px]">
-                Pastikan backend server berjalan di port 8080. Jalankan <code className="bg-surface-container px-2 py-1 rounded text-xs">npm run dev</code> di folder utama proyek.
+                Pastikan backend server berjalan dan terhubung. Jalankan <code className="bg-surface-container px-2 py-1 rounded text-xs">npm run dev</code> di folder utama proyek.
               </p>
             </div>
           ) : status === 'ready' || status === 'connected' ? (

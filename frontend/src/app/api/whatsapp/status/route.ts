@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 // GET /api/whatsapp/status - Get current WhatsApp status from backend HTTP API
 export async function GET() {
   try {
-    const res = await fetch("http://127.0.0.1:8081/api/status", {
+    const backendApiUrl = process.env.BACKEND_API_URL || "http://127.0.0.1:8081";
+    const res = await fetch(`${backendApiUrl}/api/status`, {
       cache: "no-store",
     });
 
