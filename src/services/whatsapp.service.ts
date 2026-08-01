@@ -18,9 +18,22 @@ export class WhatsAppService {
   private messageHandlers: Array<(message: WhatsAppMessage) => void> = [];
   private statusHandlers: Array<(status: ConnectionStatus) => void> = [];
   private qrHandlers: Array<(qr: string) => void> = [];
+  private isShuttingDown: boolean = false;
 
   constructor() {
     logger.info('WhatsApp Service initialized');
+    
+    // Graceful shutdown: prevent session deletion on PM2 restart
+    process.on('SIGTERM', () => {
+      logger.info('SIGTERM received, marking shutdown to preserve session');
+      this.isShuttingDown = true;
+      process.exit(0);
+    });
+    process.on('SIGINT', () => {
+      logger.info('SIGINT received, marking shutdown to preserve session');
+      this.isShuttingDown = true;
+      process.exit(0);
+    });
   }
 
   /**
@@ -39,7 +52,9 @@ export class WhatsAppService {
       this.updateConnectionStatus(ConnectionStatus.CONNECTING);
 
       const path = await import('path');
+      const fs = await import('fs');
       const sessionPath = path.default.resolve(__dirname, '../../.whatsapp-session');
+      logger.info('WhatsApp session path', { sessionPath, exists: fs.existsSync(sessionPath) });
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
       
       this.sock = makeWASocket({
@@ -72,8 +87,15 @@ export class WhatsAppService {
           logger.info('Connection closed', { 
             reason: lastDisconnect?.error, 
             statusCode,
-            shouldReconnect 
+            shouldReconnect,
+            isShuttingDown: this.isShuttingDown
           });
+
+          // If PM2 is restarting us, do nothing - session is preserved on disk
+          if (this.isShuttingDown) {
+            logger.info('Shutdown in progress, preserving session files');
+            return;
+          }
 
           if (shouldReconnect) {
             this.updateConnectionStatus(ConnectionStatus.CONNECTING);
