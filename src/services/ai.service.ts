@@ -24,7 +24,7 @@ export class AIService {
         baseURL: "https://openrouter.ai/api/v1",
         apiKey: config.apiKey,
         defaultHeaders: {
-          "HTTP-Referer": "http://localhost:3000", // Required by OpenRouter
+          "HTTP-Referer": process.env['FRONTEND_URL'] || "http://localhost:3000", // Required by OpenRouter
           "X-Title": "WhatsApp AI Agent", // Optional
         }
       });
@@ -64,7 +64,8 @@ export class AIService {
       let currentSystemPrompt = this.config.systemPrompt;
       if (receiverJid) {
         try {
-          const deviceRes = await fetch(`http://localhost:3000/api/devices?jid=${receiverJid}`, {
+          const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+          const deviceRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
             headers: { "x-internal-auth": "true" }
           });
           if (deviceRes.ok) {
@@ -95,7 +96,8 @@ export class AIService {
       let activeClient = this.openai;
 
       try {
-        const settingsRes = await fetch('http://localhost:3000/api/settings', {
+        const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+        const settingsRes = await fetch(`${frontendUrl}/api/settings`, {
           headers: { "x-internal-auth": "true" }
         });
         const user: any = await settingsRes.json();
@@ -106,7 +108,7 @@ export class AIService {
             baseURL: "https://openrouter.ai/api/v1",
             apiKey: user.openrouterApiKey,
             defaultHeaders: {
-              "HTTP-Referer": "http://localhost:3000",
+              "HTTP-Referer": process.env['FRONTEND_URL'] || "http://localhost:3000",
               "X-Title": "WhatsApp AI Agent",
             }
           });
@@ -181,7 +183,8 @@ export class AIService {
 
       if (receiverJid) {
         try {
-          const deviceRes = await fetch(`http://localhost:3000/api/devices?jid=${receiverJid}`, {
+          const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+          const deviceRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
             headers: { "x-internal-auth": "true" }
           });
           if (deviceRes.ok) {
@@ -203,9 +206,10 @@ export class AIService {
       // 2. Fetch specific knowledge sources for this device
       let knowledgeFiles: any[] = [];
       try {
+        const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
         const kbUrl = deviceId 
-          ? `http://localhost:3000/api/knowledge?deviceId=${deviceId}`
-          : 'http://localhost:3000/api/knowledge';
+          ? `${frontendUrl}/api/knowledge?deviceId=${deviceId}`
+          : `${frontendUrl}/api/knowledge`;
           
         const kbResponse = await fetch(kbUrl, {
           headers: { "x-internal-auth": "true" }

@@ -4,7 +4,8 @@ import { logger } from './logger';
 export async function retrieveRelevantContext(query: string, topK: number = 3): Promise<string> {
   try {
     // Fetch AI config from Next.js backend
-    const settingsRes = await fetch('http://localhost:3000/api/settings', {
+    const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+    const settingsRes = await fetch(`${frontendUrl}/api/settings`, {
       headers: { "x-internal-auth": "true" }
     });
     const user: any = await settingsRes.json();

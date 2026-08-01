@@ -50,7 +50,8 @@ export class MayarService {
 
     try {
       logger.info('Fetching Mayar API keys from database...');
-      const usersRes = await fetch('http://localhost:3000/api/cron/mayar-users', {
+      const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+      const usersRes = await fetch(`${frontendUrl}/api/cron/mayar-users`, {
         headers: { 'x-internal-auth': 'true' }
       });
       
@@ -132,12 +133,13 @@ export class MayarService {
 
       try {
         // Check if transaction exists via API
-        const checkRes = await fetch(`http://localhost:3000/api/mayar-transactions?id=${trx.id}`);
+        const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+        const checkRes = await fetch(`${frontendUrl}/api/mayar-transactions?id=${trx.id}`);
         const checkData: any = await checkRes.json();
 
         if (!checkRes.ok || !checkData.exists) {
           // Create new via API
-          await fetch('http://localhost:3000/api/mayar-transactions', {
+          await fetch(`${frontendUrl}/api/mayar-transactions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -233,7 +235,8 @@ export class MayarService {
         await this.onFollowUpRequired(task);
         
         // Update DB via API
-        await fetch('http://localhost:3000/api/mayar-transactions', {
+        const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+        await fetch(`${frontendUrl}/api/mayar-transactions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

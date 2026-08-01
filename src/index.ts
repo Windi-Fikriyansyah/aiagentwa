@@ -95,7 +95,8 @@ class WhatsAppAIChatbot {
     setInterval(async () => {
       try {
         logger.info('Running Gemini Cache Refresh Cron...');
-        const res = await fetch('http://localhost:3000/api/cron/gemini-refresh', {
+        const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+        const res = await fetch(`${frontendUrl}/api/cron/gemini-refresh`, {
           headers: { 'x-internal-auth': 'true' }
         });
         const data = await res.json();
@@ -109,7 +110,8 @@ class WhatsAppAIChatbot {
     setTimeout(async () => {
       try {
         logger.info('Initial Gemini Cache Refresh Cron...');
-        const res = await fetch('http://localhost:3000/api/cron/gemini-refresh', {
+        const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+        const res = await fetch(`${frontendUrl}/api/cron/gemini-refresh`, {
           headers: { 'x-internal-auth': 'true' }
         });
         const data = await res.json();

@@ -307,7 +307,8 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
       const customerJid = sender === "user" ? message.from : message.to;
       const customerName = sender === "user" ? message.senderName : undefined;
 
-      fetch('http://localhost:3000/api/conversations', {
+      const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+      fetch(`${frontendUrl}/api/conversations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
