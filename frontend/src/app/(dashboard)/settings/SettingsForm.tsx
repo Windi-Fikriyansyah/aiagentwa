@@ -208,7 +208,7 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
                       name="openrouterModel"
                       value={profile.openrouterModel || ""}
                       onChange={handleChange}
-                      placeholder="Contoh: google/gemini-2.5-flash"
+                      placeholder="e.g. google/gemini-2.5-flash"
                       className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" 
                       type="text" 
                       required
@@ -220,7 +220,7 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
                       name="openrouterEmbedModel"
                       value={profile.openrouterEmbedModel || ""}
                       onChange={handleChange}
-                      placeholder="Contoh: nvidia/llama-nemotron-embed-vl-1b-v2:free"
+                      placeholder="e.g. nvidia/llama-nemotron-embed-vl-1b-v2:free"
                       className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" 
                       type="text" 
                       required
