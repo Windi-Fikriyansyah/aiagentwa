@@ -70,6 +70,9 @@ export async function POST(request: Request) {
       }
     }
     
+    const profile = await prisma.user.findUnique({ where: { id: userId } });
+    const useOpenRouter = !!(profile?.openrouterApiKey);
+    
     if (type === "URL") {
       const url = formData.get("url") as string;
       if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -113,45 +116,47 @@ export async function POST(request: Request) {
 
         // Upload to Gemini via raw REST API
         let geminiFileUri = null;
-        try {
-          // 1. Start Resumable Upload
-          const initRes = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=resumable&key=${process.env.GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: {
-              'X-Goog-Upload-Protocol': 'resumable',
-              'X-Goog-Upload-Command': 'start',
-              'X-Goog-Upload-Header-Content-Length': buffer.length.toString(),
-              'X-Goog-Upload-Header-Content-Type': 'text/plain',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ file: { display_name: filename } })
-          });
-          
-          const uploadUrl = initRes.headers.get('x-goog-upload-url');
-          if (!uploadUrl) {
-            const errText = await initRes.text();
-            throw new Error(`No upload URL returned from Gemini. Status: ${initRes.status}, Body: ${errText}`);
-          }
+        if (!useOpenRouter) {
+          try {
+            // 1. Start Resumable Upload
+            const initRes = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=resumable&key=${process.env.GEMINI_API_KEY}`, {
+              method: 'POST',
+              headers: {
+                'X-Goog-Upload-Protocol': 'resumable',
+                'X-Goog-Upload-Command': 'start',
+                'X-Goog-Upload-Header-Content-Length': buffer.length.toString(),
+                'X-Goog-Upload-Header-Content-Type': 'text/plain',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ file: { display_name: filename } })
+            });
+            
+            const uploadUrl = initRes.headers.get('x-goog-upload-url');
+            if (!uploadUrl) {
+              const errText = await initRes.text();
+              throw new Error(`No upload URL returned from Gemini. Status: ${initRes.status}, Body: ${errText}`);
+            }
 
-          // 2. Upload the bytes
-          const uploadRes = await fetch(uploadUrl, {
-            method: 'POST',
-            headers: {
-              'X-Goog-Upload-Offset': '0',
-              'X-Goog-Upload-Command': 'upload, finalize'
-            },
-            body: buffer
-          });
-          
-          const fileData = await uploadRes.json();
-          if (fileData.file && fileData.file.uri) {
-            geminiFileUri = fileData.file.uri;
-          } else {
-            throw new Error(`Gemini upload failed: ${JSON.stringify(fileData)}`);
+            // 2. Upload the bytes
+            const uploadRes = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: {
+                'X-Goog-Upload-Offset': '0',
+                'X-Goog-Upload-Command': 'upload, finalize'
+              },
+              body: buffer
+            });
+            
+            const fileData = await uploadRes.json();
+            if (fileData.file && fileData.file.uri) {
+              geminiFileUri = fileData.file.uri;
+            } else {
+              throw new Error(`Gemini upload failed: ${JSON.stringify(fileData)}`);
+            }
+          } catch (uploadErr: any) {
+            console.error("Failed to upload to Gemini File API:", uploadErr);
+            return NextResponse.json({ error: "Failed to upload to Gemini: " + uploadErr.message }, { status: 500 });
           }
-        } catch (uploadErr: any) {
-          console.error("Failed to upload to Gemini File API:", uploadErr);
-          return NextResponse.json({ error: "Failed to upload to Gemini: " + uploadErr.message }, { status: 500 });
         }
 
         // Save to database
@@ -208,46 +213,51 @@ export async function POST(request: Request) {
 
       // Upload to Gemini via raw REST API
       let geminiFileUri = null;
-      try {
-        let mimeType = "application/pdf";
-        if (filename.endsWith(".txt")) mimeType = "text/plain";
-        else if (filename.endsWith(".docx") || filename.endsWith(".doc")) mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        
-        // 1. Start Resumable Upload
-        const initRes = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=resumable&key=${process.env.GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: {
-            'X-Goog-Upload-Protocol': 'resumable',
-            'X-Goog-Upload-Command': 'start',
-            'X-Goog-Upload-Header-Content-Length': buffer.length.toString(),
-            'X-Goog-Upload-Header-Content-Type': mimeType,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ file: { display_name: filename } })
-        });
-        
-        const uploadUrl = initRes.headers.get('x-goog-upload-url');
-        if (!uploadUrl) throw new Error("No upload URL returned from Gemini");
+      if (!useOpenRouter) {
+        try {
+          let mimeType = "application/pdf";
+          if (filename.endsWith(".txt")) mimeType = "text/plain";
+          else if (filename.endsWith(".docx") || filename.endsWith(".doc")) mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+          
+          // 1. Start Resumable Upload
+          const initRes = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=resumable&key=${process.env.GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: {
+              'X-Goog-Upload-Protocol': 'resumable',
+              'X-Goog-Upload-Command': 'start',
+              'X-Goog-Upload-Header-Content-Length': buffer.length.toString(),
+              'X-Goog-Upload-Header-Content-Type': mimeType,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ file: { display_name: filename } })
+          });
+          
+          const uploadUrl = initRes.headers.get('x-goog-upload-url');
+          if (!uploadUrl) {
+            const errText = await initRes.text();
+            throw new Error(`No upload URL returned. Status: ${initRes.status}, Error: ${errText}`);
+          }
 
-        // 2. Upload the bytes
-        const uploadRes = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: {
-            'X-Goog-Upload-Offset': '0',
-            'X-Goog-Upload-Command': 'upload, finalize'
-          },
-          body: buffer
-        });
-        
-        const fileData = await uploadRes.json();
-        if (fileData.file && fileData.file.uri) {
-          geminiFileUri = fileData.file.uri;
-        } else {
-          throw new Error(`Gemini upload failed: ${JSON.stringify(fileData)}`);
+          // 2. Upload the bytes
+          const uploadRes = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+              'X-Goog-Upload-Offset': '0',
+              'X-Goog-Upload-Command': 'upload, finalize'
+            },
+            body: buffer
+          });
+          
+          const fileData = await uploadRes.json();
+          if (fileData.file && fileData.file.uri) {
+            geminiFileUri = fileData.file.uri;
+          } else {
+            throw new Error(`Gemini upload failed: ${JSON.stringify(fileData)}`);
+          }
+        } catch (uploadErr: any) {
+          console.error("Failed to upload to Gemini File API:", uploadErr);
+          return NextResponse.json({ error: "Failed to upload to Gemini: " + uploadErr.message }, { status: 500 });
         }
-      } catch (uploadErr: any) {
-        console.error("Failed to upload to Gemini File API:", uploadErr);
-        return NextResponse.json({ error: "Failed to upload to Gemini: " + uploadErr.message }, { status: 500 });
       }
 
       const source = await prisma.knowledgeSource.create({
