@@ -88,9 +88,6 @@ export class AIService {
         finalSystemPrompt += `\n\nGunakan referensi dokumen berikut untuk menjawab jika relevan:\n${ragContext}`;
       }
 
-      // JSON enforcement prompt
-      const jsonSystemPrompt = finalSystemPrompt + `\n\nPENTING: Anda harus merespons dalam format JSON murni. Format yang diwajibkan: {"balasan": "teks balasan Anda ke pelanggan", "status": "hot" | "warm" | "cold"}. Gunakan "hot" jika pelanggan ingin membeli/tanya harga/transaksi, "warm" jika tertarik/tanya fitur detail, "cold" jika sekadar menyapa/tidak terkait penjualan.`;
-
       // Fetch dynamic config
       let activeModel = this.config.model;
       let activeClient = this.openai;
@@ -122,7 +119,7 @@ export class AIService {
 
       const conversationContext = this.buildConversationContext(chatHistory);
       const messages = [
-        { role: 'system' as const, content: jsonSystemPrompt },
+        { role: 'system' as const, content: finalSystemPrompt },
         ...conversationContext,
         { role: 'user' as const, content: message },
       ];
@@ -134,24 +131,21 @@ export class AIService {
         temperature: this.config.temperature
       });
       
-      let aiMessage = completion.choices[0]?.message?.content || '{"balasan": "I apologize, but I cannot generate a response at the moment.", "status": "cold"}';
-      
-      let parsed = { balasan: aiMessage, status: 'cold' };
-      try {
-        let rawText = aiMessage;
-        if (rawText.startsWith('```json')) rawText = rawText.replace(/```json|```/g, '').trim();
-        parsed = JSON.parse(rawText);
-      } catch (e) {
-        logger.warn('Failed to parse OpenAI JSON response', { rawText: aiMessage });
-      }
+      let aiMessage = completion.choices[0]?.message?.content || 'Maaf, saya tidak dapat merespons saat ini.';
 
+      // Determine lead status internally via keyword analysis
+      const lowerMsg = message.toLowerCase();
       let leadStatus: 'hot' | 'warm' | 'cold' = 'cold';
-      if (parsed.status === 'hot' || parsed.status === 'warm') {
-        leadStatus = parsed.status;
+      const hotKeywords = ['harga', 'beli', 'bayar', 'order', 'pesan', 'transaksi', 'transfer', 'checkout', 'invoice', 'diskon', 'promo'];
+      const warmKeywords = ['fitur', 'fungsi', 'bisa', 'cara', 'gimana', 'bagaimana', 'detail', 'info', 'tertarik', 'cocok', 'paket', 'plan'];
+      if (hotKeywords.some(k => lowerMsg.includes(k))) {
+        leadStatus = 'hot';
+      } else if (warmKeywords.some(k => lowerMsg.includes(k))) {
+        leadStatus = 'warm';
       }
 
       const response: AIResponse = {
-        message: parsed.balasan || 'I apologize, but I cannot generate a response at the moment.',
+        message: aiMessage,
         leadStatus,
         confidence: this.calculateConfidence(completion),
         context: this.extractContext(chatHistory),
