@@ -7,9 +7,9 @@ export async function retrieveRelevantContext(query: string, topK: number = 3): 
     const settingsRes = await fetch('http://localhost:3000/api/settings', {
       headers: { "x-internal-auth": "true" }
     });
-    const user = await settingsRes.json();
+    const user: any = await settingsRes.json();
 
-    if (!user?.openrouterApiKey || !user?.openrouterEmbedModel || !process.env.PINECONE_API_KEY) {
+    if (!user?.openrouterApiKey || !user?.openrouterEmbedModel || !process.env['PINECONE_API_KEY']) {
       logger.warn('RAG retrieval skipped: Missing OpenRouter config or PINECONE_API_KEY');
       return '';
     }
@@ -18,9 +18,9 @@ export async function retrieveRelevantContext(query: string, topK: number = 3): 
     const EMBED_MODEL = user.openrouterEmbedModel;
 
     const pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY,
+      apiKey: process.env['PINECONE_API_KEY'] as string,
     });
-    const indexName = process.env.PINECONE_INDEX || 'whatsapp-bot';
+    const indexName = process.env['PINECONE_INDEX'] || 'whatsapp-bot';
     const index = pinecone.index(indexName);
 
     // Embed the query
@@ -36,7 +36,7 @@ export async function retrieveRelevantContext(query: string, topK: number = 3): 
       })
     });
 
-    const embeddingsData = await embeddingsRes.json();
+    const embeddingsData: any = await embeddingsRes.json();
     if (!embeddingsRes.ok) {
       throw new Error(`OpenRouter Embedding failed: ${JSON.stringify(embeddingsData)}`);
     }
@@ -60,8 +60,8 @@ export async function retrieveRelevantContext(query: string, topK: number = 3): 
     // Combine retrieved texts
     let contextStr = "--- CONTEXT KNOWLEDGE BASE ---\n";
     for (const match of searchRes.matches) {
-      if (match.metadata && match.metadata.text) {
-        contextStr += match.metadata.text + "\n\n";
+      if (match.metadata && match.metadata['text']) {
+        contextStr += match.metadata['text'] + "\n\n";
       }
     }
     contextStr += "--------------------------------\n";

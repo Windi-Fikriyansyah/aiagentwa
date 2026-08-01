@@ -10,7 +10,6 @@ export interface FollowUpTask {
 }
 
 export class MayarService {
-  private apiKey: string | undefined;
   private intervalId: NodeJS.Timeout | null = null;
   private isProcessing: boolean = false;
   private onFollowUpRequired: ((task: FollowUpTask) => Promise<void>) | null = null;
@@ -59,7 +58,7 @@ export class MayarService {
         throw new Error('Failed to fetch Mayar users from internal API');
       }
       
-      const { users } = await usersRes.json();
+      const { users } = (await usersRes.json()) as any;
       if (!users || users.length === 0) {
         logger.info('No active users with Mayar API Keys found.');
         return;
@@ -79,7 +78,7 @@ export class MayarService {
             continue;
           }
 
-          const data = await response.json();
+          const data: any = await response.json();
           if (data.statusCode === 200 && data.data && data.data.length > 0) {
             // Fetch paid transactions for validation
             logger.info(`Fetching paid transactions for validation for user ${user.id}...`);
@@ -93,7 +92,7 @@ export class MayarService {
             const paidMobiles = new Set<string>();
             
             if (paidResponse.ok) {
-              const paidData = await paidResponse.json();
+              const paidData: any = await paidResponse.json();
               if (paidData.statusCode === 200 && paidData.data) {
                 for (const trx of paidData.data) {
                   if (trx.customer?.email) paidEmails.add(trx.customer.email.toLowerCase());
@@ -134,7 +133,7 @@ export class MayarService {
       try {
         // Check if transaction exists via API
         const checkRes = await fetch(`http://localhost:3000/api/mayar-transactions?id=${trx.id}`);
-        const checkData = await checkRes.json();
+        const checkData: any = await checkRes.json();
 
         if (!checkRes.ok || !checkData.exists) {
           // Create new via API

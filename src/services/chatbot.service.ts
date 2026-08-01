@@ -269,7 +269,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
       return {
         success: true,
         response: aiResponse.message,
-        leadStatus: aiResponse.leadStatus,
+        leadStatus: aiResponse.leadStatus || 'cold',
         processingTime,
       };
 

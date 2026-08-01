@@ -68,7 +68,7 @@ export class AIService {
             headers: { "x-internal-auth": "true" }
           });
           if (deviceRes.ok) {
-            const devices = await deviceRes.json();
+            const devices = (await deviceRes.json()) as any[];
             if (devices && devices.length > 0 && devices[0].systemPrompt) {
               currentSystemPrompt = devices[0].systemPrompt;
             }
@@ -98,7 +98,7 @@ export class AIService {
         const settingsRes = await fetch('http://localhost:3000/api/settings', {
           headers: { "x-internal-auth": "true" }
         });
-        const user = await settingsRes.json();
+        const user: any = await settingsRes.json();
         
         if (user && user.openrouterApiKey && user.openrouterModel) {
           activeModel = user.openrouterModel;
@@ -185,7 +185,7 @@ export class AIService {
             headers: { "x-internal-auth": "true" }
           });
           if (deviceRes.ok) {
-            const devices = await deviceRes.json();
+            const devices = (await deviceRes.json()) as any[];
             if (devices && devices.length > 0) {
               const device = devices[0];
               deviceId = device.id;
@@ -211,7 +211,7 @@ export class AIService {
           headers: { "x-internal-auth": "true" }
         });
         if (kbResponse.ok) {
-          const sources = await kbResponse.json();
+          const sources = (await kbResponse.json()) as any[];
           knowledgeFiles = sources.filter((s: any) => s.geminiFileUri);
         }
       } catch (err) {

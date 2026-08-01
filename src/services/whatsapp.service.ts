@@ -168,6 +168,7 @@ export class WhatsAppService {
       const content = this.extractMessageContent(msg.message || undefined);
       
       if (!content) return null;
+      if (!msg.key) return null;
 
       const isGroup = msg.key.remoteJid?.endsWith('@g.us') || false;
       const groupId = isGroup ? msg.key.remoteJid : undefined;
