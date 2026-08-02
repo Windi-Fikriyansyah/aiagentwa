@@ -173,9 +173,9 @@ export default function SettingsForm({ initialProfile }: { initialProfile: Profi
                         onChange={handleChange}
                         className="w-full px-4 py-3 bg-transparent border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none appearance-none"
                       >
-                        <option>WIB (Jakarta) GMT+7</option>
-                        <option>WITA (Makassar) GMT+8</option>
-                        <option>WIT (Jayapura) GMT+9</option>
+                        <option value="Asia/Jakarta">WIB (Jakarta) GMT+7</option>
+                        <option value="Asia/Makassar">WITA (Makassar) GMT+8</option>
+                        <option value="Asia/Jayapura">WIT (Jayapura) GMT+9</option>
                       </select>
                     </div>
                   </div>
