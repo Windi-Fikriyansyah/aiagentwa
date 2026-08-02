@@ -37,25 +37,48 @@ export class ChatbotService {
     this.setupEventHandlers();
     
     // Allow HTTP API to trigger manual messages
-    this.webSocketService.setOnSendMessage(async (chatId, message) => {
-      const sent = await this.sendManualMessage(chatId, message);
+    this.webSocketService.setOnSendMessage(async (deviceId, chatId, message) => {
+      const sent = await this.sendManualMessage(deviceId, chatId, message);
       if (sent) {
         // Mock a bot message to sync to DB and WS
         const botMessage: WhatsAppMessage = {
           id: `manual-${Date.now()}`,
-          from: this.whatsappService.getUser()?.id?.replace(/:\d+/, '') || 'unknown',
+          from: this.whatsappService.getUser(deviceId)?.id?.replace(/:\d+/, '') || 'unknown',
           to: chatId,
           timestamp: Date.now(),
           type: 'text',
           content: message,
           isGroup: chatId.endsWith('@g.us'),
           senderName: 'Admin',
+          deviceId
         };
         this.chatHistoryService.addMessage(chatId, botMessage);
         this.webSocketService.sendMessageSent(botMessage);
-        this.syncMessageToDb(botMessage, "human");
+        this.syncMessageToDb(deviceId, botMessage, "human");
       }
       return sent;
+    });
+
+    // Handle manual connection from HTTP API
+    this.webSocketService.setOnConnect(async (deviceId) => {
+      try {
+        await this.whatsappService.startSession(deviceId);
+        return true;
+      } catch (err) {
+        logger.error(`Error starting session via API for ${deviceId}`, { err });
+        return false;
+      }
+    });
+
+    // Handle manual disconnection from HTTP API
+    this.webSocketService.setOnDisconnect(async (deviceId) => {
+      try {
+        await this.whatsappService.deleteSession(deviceId);
+        return true;
+      } catch (err) {
+        logger.error(`Error deleting session via API for ${deviceId}`, { err });
+        return false;
+      }
     });
     
     logger.info('Chatbot Service initialized');
@@ -66,21 +89,21 @@ export class ChatbotService {
    */
   private setupEventHandlers(): void {
     // WhatsApp message handler
-    this.whatsappService.onMessage((message: WhatsAppMessage) => {
-      this.handleIncomingMessage(message);
+    this.whatsappService.onMessage((deviceId: string, message: WhatsAppMessage) => {
+      this.handleIncomingMessage(deviceId, message);
     });
 
     // WhatsApp connection status handler
-    this.whatsappService.onConnectionStatusChange((status: ConnectionStatus) => {
-      const user = this.whatsappService.getUser();
-      this.webSocketService.sendConnectionStatus(status, user);
-      logger.info('WhatsApp connection status changed', { status, hasUser: !!user });
+    this.whatsappService.onConnectionStatusChange((deviceId: string, status: ConnectionStatus) => {
+      const user = this.whatsappService.getUser(deviceId);
+      this.webSocketService.sendConnectionStatus(deviceId, status, user);
+      logger.info(`WhatsApp connection status changed for ${deviceId}`, { status, hasUser: !!user });
     });
 
     // WhatsApp QR code handler
-    this.whatsappService.onQRGenerated((qr: string) => {
-      this.webSocketService.sendQRGenerated(qr);
-      logger.info('WhatsApp QR code broadcasted via WebSocket');
+    this.whatsappService.onQRGenerated((deviceId: string, qr: string) => {
+      this.webSocketService.sendQRGenerated(deviceId, qr);
+      logger.info(`WhatsApp QR code broadcasted via WebSocket for ${deviceId}`);
     });
 
     // Mayar Follow-up Handler
@@ -97,22 +120,24 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
       
       const aiResponse = await this.aiService.generateResponse(prompt, []);
       if (aiResponse && aiResponse.message) {
-        await this.whatsappService.sendMessage(task.customerMobile, aiResponse.message);
+        const deviceId = 'default-device'; // Use default device for Mayar cron for now
+        await this.whatsappService.sendMessage(deviceId, task.customerMobile, aiResponse.message);
         
         // Mock a bot message to sync to DB and WS
         const botMessage: WhatsAppMessage = {
           id: `mayar-${task.transactionId}-${Date.now()}`,
-          from: this.whatsappService.getUser()?.id?.replace(/:\d+/, '') || 'unknown',
+          from: this.whatsappService.getUser(deviceId)?.id?.replace(/:\d+/, '') || 'unknown',
           to: task.customerMobile,
           timestamp: Date.now(),
           type: 'text',
           content: aiResponse.message,
           isGroup: false,
           senderName: 'AI Follow Up',
+          deviceId
         };
         this.chatHistoryService.addMessage(task.customerMobile, botMessage);
         this.webSocketService.sendMessageSent(botMessage);
-        await this.syncMessageToDb(botMessage, "ai");
+        await this.syncMessageToDb(deviceId, botMessage, "ai");
       }
     });
   }
@@ -151,7 +176,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
   /**
    * Handle incoming WhatsApp message
    */
-  private async handleIncomingMessage(message: WhatsAppMessage): Promise<void> {
+  private async handleIncomingMessage(deviceId: string, message: WhatsAppMessage): Promise<void> {
     if (this.isProcessing) {
       logger.warn('Message processing already in progress, skipping');
       return;
@@ -162,6 +187,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
 
     try {
       logger.info('Processing incoming message', { 
+        deviceId,
         from: message.from, 
         content: message.content.substring(0, 50) 
       });
@@ -173,7 +199,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
       this.chatHistoryService.addMessage(message.to, message);
       
       // Sync incoming message to database
-      this.syncMessageToDb(message, "user");
+      this.syncMessageToDb(deviceId, message, "user");
 
       // Process message and generate response
       logger.info('About to process message with AI service');
@@ -185,8 +211,8 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
         await this.delay(this.responseDelay);
 
         // Send response via WhatsApp
-        logger.info('Sending AI response via WhatsApp');
-        const sent = await this.whatsappService.sendMessage(message.from, result.response);
+        logger.info(`Sending AI response via WhatsApp device ${deviceId}`);
+        const sent = await this.whatsappService.sendMessage(deviceId, message.from, result.response);
 
         if (sent) {
           // Add bot response to chat history
@@ -200,20 +226,21 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
             isGroup: message.isGroup,
             groupId: message.groupId || undefined,
             senderName: 'AI Assistant',
+            deviceId
           };
 
           this.chatHistoryService.addMessage(message.to, botMessage);
           this.webSocketService.sendMessageSent(botMessage);
           
           // Sync bot message to database (and update leadStatus!)
-          this.syncMessageToDb(botMessage, "ai", result.leadStatus);
+          this.syncMessageToDb(deviceId, botMessage, "ai", result.leadStatus);
 
           logger.info('Response sent successfully', { 
             to: message.from, 
             responseLength: result.response.length 
           });
         } else {
-          logger.error('Failed to send WhatsApp response');
+          logger.error(`Failed to send WhatsApp response on device ${deviceId}`);
         }
       } else {
         logger.error('Message processing failed', { error: result.error });
@@ -298,9 +325,9 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
   /**
    * Sync message to database via API
    */
-  private async syncMessageToDb(message: WhatsAppMessage, sender: "user" | "ai" | "human", leadStatus?: 'hot' | 'warm' | 'cold'): Promise<void> {
+  private async syncMessageToDb(deviceId: string, message: WhatsAppMessage, sender: "user" | "ai" | "human", leadStatus?: 'hot' | 'warm' | 'cold'): Promise<void> {
     try {
-      const user = this.whatsappService.getUser();
+      const user = this.whatsappService.getUser(deviceId);
       if (!user || !user.id) return;
       
       const deviceJid = user.id.replace(/:\d+/, ''); // Strip device id suffix e.g. :1
@@ -316,6 +343,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
         },
         body: JSON.stringify({
           deviceJid,
+          targetUserId: deviceId,
           customerJid,
           customerName,
           leadStatus,
@@ -336,15 +364,16 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
    * Get chatbot status
    */
   getStatus(): {
-    whatsappConnected: boolean;
+    whatsappConnected: boolean; // Just a general boolean (e.g., if ANY is connected)
     aiServiceConnected: boolean;
     webSocketClients: number;
     isProcessing: boolean;
     totalChats: number;
     totalMessages: number;
   } {
+    // For backwards compatibility, consider connected if default-device is connected
     return {
-      whatsappConnected: this.whatsappService.isConnected(),
+      whatsappConnected: this.whatsappService.isConnected('default-device'),
       aiServiceConnected: this.aiService.validateConfig(),
       webSocketClients: this.webSocketService.getConnectedClientsCount(),
       isProcessing: this.isProcessing,
@@ -356,8 +385,8 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
   /**
    * Send manual message (for testing)
    */
-  async sendManualMessage(chatId: string, message: string): Promise<boolean> {
-    return await this.whatsappService.sendMessage(chatId, message);
+  async sendManualMessage(deviceId: string, chatId: string, message: string): Promise<boolean> {
+    return await this.whatsappService.sendMessage(deviceId, chatId, message);
   }
 
   /**
@@ -409,7 +438,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
     logger.info('Shutting down chatbot...');
 
     try {
-      await this.whatsappService.disconnect();
+      await this.whatsappService.disconnectAll();
       this.webSocketService.close();
       this.mayarService.stopCron();
       
@@ -420,4 +449,4 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
       });
     }
   }
-} 
+}

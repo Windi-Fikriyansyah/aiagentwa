@@ -48,6 +48,9 @@ export default function AgentsPage() {
       } else if (data.status === 'disconnected') {
         // Automatically clean up database if disconnected
         try {
+          // Trigger backend to connect so we can get a QR code
+          await fetch("/api/whatsapp/connect", { method: "POST" });
+          
           // Only call DELETE if we know we had devices (optimistic check) to prevent spamming
           setDevices(prevDevices => {
             if (prevDevices.length > 0) {
@@ -128,6 +131,21 @@ export default function AgentsPage() {
       alert("Terjadi kesalahan sistem.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm("Yakin ingin memutuskan koneksi WhatsApp ini?")) return;
+    try {
+      setIsLoading(true);
+      await fetch("/api/whatsapp/disconnect", { method: "POST" });
+      await fetch("/api/devices", { method: "DELETE" });
+      setDevices([]);
+      setStatus('disconnected');
+    } catch (error) {
+      console.error("Failed to disconnect:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -244,6 +262,12 @@ export default function AgentsPage() {
               <p className="font-body-md text-body-md text-secondary">
                 Nomor Anda sudah berhasil terhubung ke AI Agent dan siap melayani pesan.
               </p>
+              <button 
+                onClick={handleDisconnect}
+                className="mt-4 px-6 py-2 rounded-full border border-red-500 text-red-500 hover:bg-red-50 font-label-md font-bold transition-colors"
+              >
+                Putuskan Koneksi
+              </button>
             </div>
           ) : qrCode ? (
             <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">

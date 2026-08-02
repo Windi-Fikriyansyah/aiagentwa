@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { deviceJid, customerJid, customerName, leadStatus, message } = body;
+    const { deviceJid, customerJid, customerName, leadStatus, message, targetUserId } = body;
 
     if (!deviceJid || !customerJid || !message) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -73,13 +73,15 @@ export async function POST(request: Request) {
       where: { jid: deviceJid },
     });
 
+    if (!device && targetUserId) {
+      console.warn(`Device not found for JID: ${deviceJid}. Attempting to fallback by targetUserId: ${targetUserId}`);
+      device = await prisma.device.findFirst({
+        where: { userId: targetUserId }
+      });
+    }
+
     if (!device) {
-      console.warn(`Device not found for JID: ${deviceJid}. Falling back to first available device.`);
-      device = await prisma.device.findFirst();
-      
-      if (!device) {
-        return NextResponse.json({ error: `Device not found (JID: ${deviceJid}) and no fallback available` }, { status: 404 });
-      }
+      return NextResponse.json({ error: `Device not found (JID: ${deviceJid}) and no fallback available for targetUserId: ${targetUserId || 'none'}` }, { status: 404 });
     }
 
     // 2. Upsert the conversation

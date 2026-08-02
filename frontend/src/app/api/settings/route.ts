@@ -22,9 +22,7 @@ export async function GET(request: Request) {
     }
 
     if (!targetUserId) {
-      // Fallback: if internal call without userId, get first user (backwards compat)
-      const profile = await prisma.user.findFirst();
-      return NextResponse.json(profile || {});
+      return NextResponse.json({ error: "userId is required for internal requests" }, { status: 400 });
     }
 
     const profile = await prisma.user.findUnique({

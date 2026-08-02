@@ -75,14 +75,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <MessageSquare size={20} />
             <span className="font-label-md text-label-md">Inbox</span>
           </Link>
-          <Link className={getSidebarLinkClass("/analytics")} href="/analytics">
+          {/* <Link className={getSidebarLinkClass("/analytics")} href="/analytics">
             <BarChart3 size={20} />
             <span className="font-label-md text-label-md">Analytics</span>
           </Link>
           <Link className={getSidebarLinkClass("/billing")} href="/billing">
             <CreditCard size={20} />
             <span className="font-label-md text-label-md">Billing</span>
-          </Link>
+          </Link> */}
         </nav>
 
         {/* Footer Navigation */}

@@ -11,6 +11,7 @@ export interface WhatsAppMessage {
   isGroup: boolean;
   groupId?: string | undefined;
   senderName?: string | undefined;
+  deviceId?: string;
 }
 
 /**

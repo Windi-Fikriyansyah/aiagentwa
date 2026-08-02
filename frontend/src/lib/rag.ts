@@ -3,12 +3,13 @@ import prisma from '@/lib/prisma';
 
 export async function processAndUploadRAG(
   sourceId: string, 
+  userId: string,
   buffer: Buffer, 
   mimeType: string,
   urlContext?: string
 ) {
   try {
-    const user = await prisma.user.findFirst();
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user?.openrouterApiKey || !user?.openrouterEmbedModel) {
       console.warn("Skipping RAG: OpenRouter API Key or Embed Model not configured in Settings");
       return;

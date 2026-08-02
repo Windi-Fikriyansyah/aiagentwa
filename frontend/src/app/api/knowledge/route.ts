@@ -23,19 +23,24 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get("deviceId");
     
+    const targetUserId = isInternal ? (searchParams.get("userId") || userId) : userId;
+    
     const whereClause: any = {};
     if (deviceId) {
       whereClause.deviceId = deviceId;
-      if (!isInternal && userId) {
+      if (!isInternal && targetUserId) {
         // Ensure device belongs to user
         const device = await prisma.device.findUnique({ where: { id: deviceId } });
-        if (!device || device.userId !== userId) {
+        if (!device || device.userId !== targetUserId) {
           return NextResponse.json({ error: "Unauthorized device access" }, { status: 403 });
         }
       }
-    } else if (!isInternal && userId) {
+    } else if (targetUserId) {
       // If no deviceId provided, return all knowledge for all devices of the user
-      whereClause.device = { userId: userId };
+      whereClause.device = { userId: targetUserId };
+    } else {
+      // Internal call with no deviceId and no userId
+      return NextResponse.json({ error: "deviceId or userId is required for internal requests" }, { status: 400 });
     }
 
     const sources = await prisma.knowledgeSource.findMany({
@@ -176,7 +181,7 @@ export async function POST(request: Request) {
         // RAG Processing for OpenRouter
         const { processAndUploadRAG } = await import("@/lib/rag");
         // Execute asynchronously so it doesn't block the response
-        processAndUploadRAG(source.id, buffer, "text/plain", url).catch(console.error);
+        processAndUploadRAG(source.id, userId, buffer, "text/plain", url).catch(console.error);
         
         return NextResponse.json(source);
       } catch (err: any) {
@@ -275,7 +280,7 @@ export async function POST(request: Request) {
       // RAG Processing for OpenRouter
       const { processAndUploadRAG } = await import("@/lib/rag");
       // Process RAG synchronously to catch errors
-      await processAndUploadRAG(source.id, buffer, file.type, "");
+      await processAndUploadRAG(source.id, userId, buffer, file.type, "");
 
       return NextResponse.json(source);
     }

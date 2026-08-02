@@ -48,6 +48,7 @@ export async function POST(
         "x-internal-auth": process.env.INTERNAL_AUTH_SECRET || "true"
       },
       body: JSON.stringify({
+        deviceId: userId,
         chatId: conversation.jid,
         message
       })

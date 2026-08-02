@@ -10,10 +10,15 @@ export class WebSocketService {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocket> = new Set();
   private eventHandlers: Map<EventType, Array<(data: any) => void>> = new Map();
-  private currentWhatsAppStatus: ConnectionStatus | null = null;
-  private currentQR: string | null = null;
-  private currentUser: any = null;
-  private onSendMessageCallback?: (chatId: string, message: string) => Promise<boolean>;
+  
+  // Maps to support multiple devices
+  private whatsappStatuses: Map<string, ConnectionStatus> = new Map();
+  private qrs: Map<string, string> = new Map();
+  private users: Map<string, any> = new Map();
+  
+  private onSendMessageCallback?: (deviceId: string, chatId: string, message: string) => Promise<boolean>;
+  private onConnectCallback?: (deviceId: string) => Promise<boolean>;
+  private onDisconnectCallback?: (deviceId: string) => Promise<boolean>;
 
   constructor(private port: number = 8080) {
     logger.info('WebSocket Service initialized', { port });
@@ -22,8 +27,22 @@ export class WebSocketService {
   /**
    * Set callback for sending manual messages from HTTP API
    */
-  setOnSendMessage(callback: (chatId: string, message: string) => Promise<boolean>): void {
+  setOnSendMessage(callback: (deviceId: string, chatId: string, message: string) => Promise<boolean>): void {
     this.onSendMessageCallback = callback;
+  }
+
+  /**
+   * Set callback for triggering manual connection from HTTP API
+   */
+  setOnConnect(callback: (deviceId: string) => Promise<boolean>): void {
+    this.onConnectCallback = callback;
+  }
+
+  /**
+   * Set callback for triggering manual disconnection from HTTP API
+   */
+  setOnDisconnect(callback: (deviceId: string) => Promise<boolean>): void {
+    this.onDisconnectCallback = callback;
   }
 
   /**
@@ -80,34 +99,31 @@ export class WebSocketService {
       timestamp: Date.now(),
     });
 
-    // Send current WhatsApp status if known
-    if (this.currentWhatsAppStatus) {
-      logger.info('Sending cached WhatsApp status to new client', { status: this.currentWhatsAppStatus });
+    // Send current WhatsApp statuses to new client
+    this.whatsappStatuses.forEach((status, deviceId) => {
       this.sendToClient(ws, {
         type: 'message',
         data: {
           type: EventType.CONNECTION_STATUS_CHANGED,
-          data: { status: this.currentWhatsAppStatus },
+          data: { deviceId, status },
           timestamp: Date.now(),
         },
         timestamp: Date.now(),
       });
-    }
+    });
 
-    // Send current QR if known
-    logger.info('Checking cached QR for new client', { hasQR: !!this.currentQR, qrLength: this.currentQR?.length ?? 0 });
-    if (this.currentQR) {
-      logger.info('Sending cached QR code to new client');
+    // Send current QRs to new client
+    this.qrs.forEach((qr, deviceId) => {
       this.sendToClient(ws, {
         type: 'message',
         data: {
           type: EventType.QR_CODE_GENERATED,
-          data: { qr: this.currentQR },
+          data: { deviceId, qr },
           timestamp: Date.now(),
         },
         timestamp: Date.now(),
       });
-    }
+    });
 
     ws.on('message', (data: Buffer) => {
       try {
@@ -285,20 +301,26 @@ export class WebSocketService {
         return;
       }
 
-      if (req.url === '/api/status' && req.method === 'GET') {
+      const url = new URL(req.url || '/', `http://${req.headers.host}`);
+
+      if (url.pathname === '/api/status' && req.method === 'GET') {
+        const targetDeviceId: string | null = url.searchParams.get('deviceId');
+        
+        // Remove default-device fallback. If not provided, it's just disconnected.
         const response = {
-          status: this.currentWhatsAppStatus || 'disconnected',
-          qr: this.currentQR,
+          status: targetDeviceId ? (this.whatsappStatuses.get(targetDeviceId) || 'disconnected') : 'disconnected',
+          qr: targetDeviceId ? (this.qrs.get(targetDeviceId) || null) : null,
           connectedClients: this.clients.size,
           timestamp: Date.now(),
-          user: this.currentUser,
+          user: targetDeviceId ? (this.users.get(targetDeviceId) || null) : null,
+          deviceId: targetDeviceId
         };
         res.writeHead(200);
         res.end(JSON.stringify(response));
         return;
       }
 
-      if (req.url === '/api/send' && req.method === 'POST') {
+      if (url.pathname === '/api/send' && req.method === 'POST') {
         if (req.headers['x-internal-auth'] !== (process.env['INTERNAL_AUTH_SECRET'] || 'true')) {
           res.writeHead(401);
           res.end(JSON.stringify({ error: 'Unauthorized' }));
@@ -309,14 +331,90 @@ export class WebSocketService {
         req.on('data', chunk => body += chunk.toString());
         req.on('end', async () => {
           try {
-            const { chatId, message } = JSON.parse(body);
+            const { deviceId, chatId, message } = JSON.parse(body);
             if (!chatId || !message) {
               res.writeHead(400);
               res.end(JSON.stringify({ error: 'Missing chatId or message' }));
               return;
             }
+            
+            const targetDeviceId = deviceId;
+            if (!targetDeviceId) {
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: 'Missing deviceId' }));
+              return;
+            }
+            
             if (this.onSendMessageCallback) {
-              const success = await this.onSendMessageCallback(chatId, message);
+              const success = await this.onSendMessageCallback(targetDeviceId, chatId, message);
+              res.writeHead(success ? 200 : 500);
+              res.end(JSON.stringify({ success }));
+            } else {
+              res.writeHead(500);
+              res.end(JSON.stringify({ error: 'Callback not set' }));
+            }
+          } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          }
+        });
+        return;
+      }
+
+      if (url.pathname === '/api/connect' && req.method === 'POST') {
+        if (req.headers['x-internal-auth'] !== (process.env['INTERNAL_AUTH_SECRET'] || 'true')) {
+          res.writeHead(401);
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+          try {
+            const { deviceId } = JSON.parse(body);
+            if (!deviceId) {
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: 'Missing deviceId' }));
+              return;
+            }
+            
+            if (this.onConnectCallback) {
+              const success = await this.onConnectCallback(deviceId);
+              res.writeHead(success ? 200 : 500);
+              res.end(JSON.stringify({ success }));
+            } else {
+              res.writeHead(500);
+              res.end(JSON.stringify({ error: 'Callback not set' }));
+            }
+          } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          }
+        });
+        return;
+      }
+
+      if (url.pathname === '/api/disconnect' && req.method === 'POST') {
+        if (req.headers['x-internal-auth'] !== (process.env['INTERNAL_AUTH_SECRET'] || 'true')) {
+          res.writeHead(401);
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+          try {
+            const { deviceId } = JSON.parse(body);
+            if (!deviceId) {
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: 'Missing deviceId' }));
+              return;
+            }
+            
+            if (this.onDisconnectCallback) {
+              const success = await this.onDisconnectCallback(deviceId);
               res.writeHead(success ? 200 : 500);
               res.end(JSON.stringify({ success }));
             } else {
@@ -355,20 +453,20 @@ export class WebSocketService {
   /**
    * Send connection status update
    */
-  sendConnectionStatus(status: ConnectionStatus, user: any = null): void {
-    this.currentWhatsAppStatus = status;
+  sendConnectionStatus(deviceId: string, status: ConnectionStatus, user: any = null): void {
+    this.whatsappStatuses.set(deviceId, status);
     if (user) {
-      this.currentUser = user;
+      this.users.set(deviceId, user);
     }
     if (status === ConnectionStatus.DISCONNECTED) {
-      this.currentUser = null;
+      this.users.delete(deviceId);
     }
     if (status === ConnectionStatus.CONNECTED || status === ConnectionStatus.READY) {
-      this.currentQR = null; // Clear QR when connected
+      this.qrs.delete(deviceId); // Clear QR when connected
     }
     this.broadcastEvent({
       type: EventType.CONNECTION_STATUS_CHANGED,
-      data: { status },
+      data: { deviceId, status },
       timestamp: Date.now(),
     });
   }
@@ -376,11 +474,11 @@ export class WebSocketService {
   /**
    * Send QR code generated event
    */
-  sendQRGenerated(qr: string): void {
-    this.currentQR = qr;
+  sendQRGenerated(deviceId: string, qr: string): void {
+    this.qrs.set(deviceId, qr);
     this.broadcastEvent({
       type: EventType.QR_CODE_GENERATED,
-      data: { qr },
+      data: { deviceId, qr },
       timestamp: Date.now(),
     });
   }
@@ -428,4 +526,4 @@ export class WebSocketService {
       timestamp: Date.now(),
     });
   }
-} 
+}

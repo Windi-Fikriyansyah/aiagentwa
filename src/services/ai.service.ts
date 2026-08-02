@@ -79,9 +79,26 @@ export class AIService {
         }
       }
 
+      // 1.5 Get deviceUserId to scope knowledge base and settings
+      let deviceUserId = '';
+      if (receiverJid) {
+        try {
+          const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
+          const devRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
+            headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
+          });
+          if (devRes.ok) {
+            const devs = (await devRes.json()) as any[];
+            if (devs && devs.length > 0 && devs[0].userId) {
+              deviceUserId = devs[0].userId;
+            }
+          }
+        } catch (_) {}
+      }
+
       // 2. Retrieve RAG Context
       const { retrieveRelevantContext } = await import('../utils/rag');
-      const ragContext = await retrieveRelevantContext(message);
+      const ragContext = await retrieveRelevantContext(message, deviceUserId);
       
       let finalSystemPrompt = currentSystemPrompt;
       if (ragContext) {
@@ -94,21 +111,6 @@ export class AIService {
 
       try {
         const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-        // Get userId from device to fetch correct user's config
-        let deviceUserId = '';
-        if (receiverJid) {
-          try {
-            const devRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
-              headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
-            });
-            if (devRes.ok) {
-              const devs = (await devRes.json()) as any[];
-              if (devs && devs.length > 0 && devs[0].userId) {
-                deviceUserId = devs[0].userId;
-              }
-            }
-          } catch (_) {}
-        }
         const settingsUrl = deviceUserId
           ? `${frontendUrl}/api/settings?userId=${deviceUserId}`
           : `${frontendUrl}/api/settings`;
@@ -192,6 +194,7 @@ export class AIService {
       // 1. Fetch device info to get custom system prompt and device ID
       let currentSystemPrompt = this.config.systemPrompt;
       let deviceId = null;
+      let deviceUserId = '';
 
       if (receiverJid) {
         try {
@@ -204,6 +207,9 @@ export class AIService {
             if (devices && devices.length > 0) {
               const device = devices[0];
               deviceId = device.id;
+              if (device.userId) {
+                deviceUserId = device.userId;
+              }
               if (device.systemPrompt) {
                 currentSystemPrompt = device.systemPrompt;
                 logger.info(`Using custom system prompt for device ${device.name}`);
@@ -219,9 +225,12 @@ export class AIService {
       let knowledgeFiles: any[] = [];
       try {
         const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-        const kbUrl = deviceId 
-          ? `${frontendUrl}/api/knowledge?deviceId=${deviceId}`
-          : `${frontendUrl}/api/knowledge`;
+        let kbUrl = `${frontendUrl}/api/knowledge`;
+        if (deviceId) {
+          kbUrl += `?deviceId=${deviceId}`;
+        } else if (deviceUserId) {
+          kbUrl += `?userId=${deviceUserId}`;
+        }
           
         const kbResponse = await fetch(kbUrl, {
           headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }

@@ -1,11 +1,15 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 import { logger } from './logger';
 
-export async function retrieveRelevantContext(query: string, topK: number = 3): Promise<string> {
+export async function retrieveRelevantContext(query: string, deviceUserId: string, topK: number = 3): Promise<string> {
   try {
     // Fetch AI config from Next.js backend
     const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-    const settingsRes = await fetch(`${frontendUrl}/api/settings`, {
+    const settingsUrl = deviceUserId 
+      ? `${frontendUrl}/api/settings?userId=${deviceUserId}`
+      : `${frontendUrl}/api/settings`;
+      
+    const settingsRes = await fetch(settingsUrl, {
       headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
     });
     const user: any = await settingsRes.json();

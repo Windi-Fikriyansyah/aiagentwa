@@ -1,340 +1,183 @@
-import { 
-  default as makeWASocket, 
-  DisconnectReason, 
-  useMultiFileAuthState,
-  WASocket,
-  proto 
-} from '@whiskeysockets/baileys';
-import qrcode from 'qrcode-terminal';
+import { WhatsAppSession } from './whatsapp.session';
 import { WhatsAppMessage, ConnectionStatus } from '../types';
 import { logger } from '../utils/logger';
+import fs from 'fs';
+import path from 'path';
 
 /**
- * WhatsApp Service for handling WhatsApp Web connection and messages
+ * WhatsApp Service for managing multiple WhatsApp Web sessions
  */
 export class WhatsAppService {
-  private sock: WASocket | null = null;
-  private connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED;
-  private messageHandlers: Array<(message: WhatsAppMessage) => void> = [];
-  private statusHandlers: Array<(status: ConnectionStatus) => void> = [];
-  private qrHandlers: Array<(qr: string) => void> = [];
-  private isShuttingDown: boolean = false;
+  private sessions: Map<string, WhatsAppSession> = new Map();
+  private messageHandlers: Array<(deviceId: string, message: WhatsAppMessage) => void> = [];
+  private statusHandlers: Array<(deviceId: string, status: ConnectionStatus) => void> = [];
+  private qrHandlers: Array<(deviceId: string, qr: string) => void> = [];
 
   constructor() {
-    logger.info('WhatsApp Service initialized');
-    
-    // Graceful shutdown: prevent session deletion on PM2 restart
-    process.on('SIGTERM', () => {
-      logger.info('SIGTERM received, marking shutdown to preserve session');
-      this.isShuttingDown = true;
-      process.exit(0);
-    });
-    process.on('SIGINT', () => {
-      logger.info('SIGINT received, marking shutdown to preserve session');
-      this.isShuttingDown = true;
-      process.exit(0);
-    });
+    logger.info('WhatsApp Service Manager initialized');
   }
 
   /**
    * Register a handler for QR code generation
    */
-  public onQRGenerated(handler: (qr: string) => void): void {
+  public onQRGenerated(handler: (deviceId: string, qr: string) => void): void {
     this.qrHandlers.push(handler);
-  }
-
-  /**
-   * Initialize WhatsApp connection
-   */
-  async initialize(): Promise<void> {
-    try {
-      logger.info('Initializing WhatsApp connection...');
-      this.updateConnectionStatus(ConnectionStatus.CONNECTING);
-
-      const path = await import('path');
-      const fs = await import('fs');
-      const sessionPath = path.default.resolve(__dirname, '../../.whatsapp-session');
-      logger.info('WhatsApp session path', { sessionPath, exists: fs.existsSync(sessionPath) });
-      const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-      
-      this.sock = makeWASocket({
-        auth: state,
-        printQRInTerminal: false,
-        browser: ['AgentFlow AI', 'Chrome', '1.0.0'],
-      });
-
-      // Handle connection updates
-      this.sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-          logger.info('QR Code received, please scan with WhatsApp');
-          qrcode.generate(qr, { small: true });
-          
-          this.qrHandlers.forEach(handler => {
-            try {
-              handler(qr);
-            } catch (error) {
-              logger.error('Error in QR handler', { error: error instanceof Error ? error.message : 'Unknown error' });
-            }
-          });
-        }
-
-        if (connection === 'close') {
-          const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-          
-          logger.info('Connection closed', { 
-            reason: lastDisconnect?.error, 
-            statusCode,
-            shouldReconnect,
-            isShuttingDown: this.isShuttingDown
-          });
-
-          // If PM2 is restarting us, do nothing - session is preserved on disk
-          if (this.isShuttingDown) {
-            logger.info('Shutdown in progress, preserving session files');
-            return;
-          }
-
-          if (shouldReconnect) {
-            this.updateConnectionStatus(ConnectionStatus.CONNECTING);
-            await this.initialize();
-          } else {
-            // Logged out or device removed - delete session and start fresh
-            logger.info('Device logged out or removed. Clearing session and restarting for new QR...');
-            this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
-            
-            // Delete device from database
-            try {
-              const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-              await fetch(`${frontendUrl}/api/devices`, {
-                method: 'DELETE',
-                headers: { 'x-internal-auth': process.env['INTERNAL_AUTH_SECRET'] || 'true' }
-              });
-              logger.info('Device record deleted from database');
-            } catch (dbErr) {
-              logger.error('Failed to delete device from database', { error: dbErr instanceof Error ? dbErr.message : 'Unknown' });
-            }
-
-            // Delete old session
-            const fs = await import('fs');
-            const path = await import('path');
-            const sessionPath = path.default.resolve(__dirname, '../../.whatsapp-session');
-            if (fs.existsSync(sessionPath)) {
-              fs.rmSync(sessionPath, { recursive: true, force: true });
-              logger.info('Old session deleted');
-            }
-
-            // Restart after a short delay to get new QR
-            setTimeout(async () => {
-              this.updateConnectionStatus(ConnectionStatus.CONNECTING);
-              await this.initialize();
-            }, 2000);
-          }
-        } else if (connection === 'open') {
-          logger.info('WhatsApp connection established');
-          this.updateConnectionStatus(ConnectionStatus.READY);
-        }
-      });
-
-      // Handle credentials update
-      this.sock.ev.on('creds.update', saveCreds);
-
-      // Handle messages
-      this.sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages[0];
-        
-        if (msg && !msg.key.fromMe && msg.message) {
-          const whatsappMessage = this.parseMessage(msg);
-          if (whatsappMessage) {
-            logger.info('Message received', { 
-              from: whatsappMessage.from, 
-              content: whatsappMessage.content.substring(0, 50) 
-            });
-            
-            // Notify all message handlers
-            this.messageHandlers.forEach(handler => {
-              try {
-                handler(whatsappMessage);
-              } catch (error) {
-                logger.error('Error in message handler', { error: error instanceof Error ? error.message : 'Unknown error' });
-              }
-            });
-          }
-        }
-      });
-
-      logger.info('WhatsApp service initialized successfully');
-    } catch (error) {
-      logger.error('Failed to initialize WhatsApp service', { error: error instanceof Error ? error.message : 'Unknown error' });
-      this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
-      throw error;
-    }
-  }
-
-  /**
-   * Send message to a specific chat
-   */
-  async sendMessage(chatId: string, message: string): Promise<boolean> {
-    if (!this.sock || this.connectionStatus !== ConnectionStatus.READY) {
-      logger.error('WhatsApp not connected');
-      return false;
-    }
-
-    try {
-      await this.sock.sendMessage(chatId, { text: message });
-      logger.info('Message sent successfully', { chatId, messageLength: message.length });
-      return true;
-    } catch (error) {
-      logger.error('Failed to send message', { 
-        chatId, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
-      return false;
-    }
-  }
-
-  /**
-   * Parse WhatsApp message to our format
-   */
-  private parseMessage(msg: proto.IWebMessageInfo): WhatsAppMessage | null {
-    try {
-      const messageType = this.getMessageType(msg.message || undefined);
-      const content = this.extractMessageContent(msg.message || undefined);
-      
-      if (!content) return null;
-      if (!msg.key) return null;
-
-      const isGroup = msg.key.remoteJid?.endsWith('@g.us') || false;
-      const groupId = isGroup ? msg.key.remoteJid : undefined;
-
-      return {
-        id: msg.key.id || '',
-        from: msg.key.participant || msg.key.remoteJid || '',
-        to: msg.key.remoteJid || '',
-        timestamp: msg.messageTimestamp ? (msg.messageTimestamp as number) * 1000 : Date.now(),
-        type: messageType,
-        content,
-        isGroup,
-        groupId: groupId || undefined,
-        senderName: msg.pushName || undefined,
-      };
-    } catch (error) {
-      logger.error('Error parsing message', { error: error instanceof Error ? error.message : 'Unknown error' });
-      return null;
-    }
-  }
-
-  /**
-   * Extract message content based on type
-   */
-  private extractMessageContent(message: proto.IMessage | undefined): string | null {
-    if (!message) return null;
-
-    if (message.conversation) return message.conversation;
-    if (message.extendedTextMessage?.text) return message.extendedTextMessage.text;
-    if (message.imageMessage?.caption) return message.imageMessage.caption;
-    if (message.videoMessage?.caption) return message.videoMessage.caption;
-    if (message.documentMessage?.title) return message.documentMessage.title;
-
-    return null;
-  }
-
-  /**
-   * Get message type
-   */
-  private getMessageType(message: proto.IMessage | undefined): WhatsAppMessage['type'] {
-    if (!message) return 'text';
-
-    if (message.conversation || message.extendedTextMessage) return 'text';
-    if (message.imageMessage) return 'image';
-    if (message.videoMessage) return 'video';
-    if (message.audioMessage) return 'audio';
-    if (message.documentMessage) return 'document';
-    if (message.locationMessage) return 'location';
-    if (message.contactMessage) return 'contact';
-
-    return 'text';
   }
 
   /**
    * Add message handler
    */
-  onMessage(handler: (message: WhatsAppMessage) => void): void {
+  public onMessage(handler: (deviceId: string, message: WhatsAppMessage) => void): void {
     this.messageHandlers.push(handler);
   }
 
   /**
    * Add connection status handler
    */
-  onConnectionStatusChange(handler: (status: ConnectionStatus) => void): void {
+  public onConnectionStatusChange(handler: (deviceId: string, status: ConnectionStatus) => void): void {
     this.statusHandlers.push(handler);
   }
 
   /**
-   * Update connection status and notify handlers
+   * Start a new or existing session
    */
-  private updateConnectionStatus(status: ConnectionStatus): void {
-    this.connectionStatus = status;
-    logger.info('Connection status changed', { status });
-    
-    this.statusHandlers.forEach(handler => {
-      try {
-        handler(status);
-      } catch (error) {
-        logger.error('Error in status handler', { error: error instanceof Error ? error.message : 'Unknown error' });
-      }
-    });
-  }
-
-  /**
-   * Get logged-in user information
-   */
-  getUser(): any {
-    return this.sock?.user || null;
-  }
-
-  /**
-   * Get current connection status
-   */
-  getConnectionStatus(): ConnectionStatus {
-    return this.connectionStatus;
-  }
-
-  /**
-   * Check if WhatsApp is connected
-   */
-  isConnected(): boolean {
-    return this.connectionStatus === ConnectionStatus.READY;
-  }
-
-  /**
-   * Disconnect WhatsApp
-   */
-  async disconnect(): Promise<void> {
-    if (this.sock) {
-      await this.sock.logout();
-      this.sock = null;
+  public async startSession(deviceId: string): Promise<WhatsAppSession> {
+    if (this.sessions.has(deviceId)) {
+      logger.info(`Session ${deviceId} already exists`);
+      return this.sessions.get(deviceId)!;
     }
-    this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
-    logger.info('WhatsApp disconnected');
+
+    const session = new WhatsAppSession(deviceId);
+    this.sessions.set(deviceId, session);
+
+    // Forward events
+    session.onMessage((id, msg) => {
+      this.messageHandlers.forEach(handler => handler(id, msg));
+    });
+    session.onConnectionStatusChange((id, status) => {
+      this.statusHandlers.forEach(handler => handler(id, status));
+    });
+    session.onQRGenerated((id, qr) => {
+      this.qrHandlers.forEach(handler => handler(id, qr));
+    });
+
+    await session.initialize();
+    return session;
+  }
+
+  /**
+   * Get a specific session
+   */
+  public getSession(deviceId: string): WhatsAppSession | undefined {
+    return this.sessions.get(deviceId);
+  }
+
+  /**
+   * Initialize WhatsApp connection manager and start all existing sessions
+   */
+  async initialize(): Promise<void> {
+    try {
+      logger.info('Initializing all WhatsApp sessions...');
+      const sessionsPath = path.resolve(__dirname, '../../.whatsapp-sessions');
+      
+      if (!fs.existsSync(sessionsPath)) {
+        fs.mkdirSync(sessionsPath, { recursive: true });
+        logger.info('Created .whatsapp-sessions directory');
+        
+        // Also start a default session to keep backward compatibility 
+        // with UI if they don't explicitly pass a deviceId yet.
+        await this.startSession('default-device');
+      } else {
+        const directories = fs.readdirSync(sessionsPath, { withFileTypes: true })
+          .filter(dirent => dirent.isDirectory())
+          .map(dirent => dirent.name);
+
+        if (directories.length === 0) {
+           await this.startSession('default-device');
+        }
+
+        for (const deviceId of directories) {
+          await this.startSession(deviceId);
+        }
+      }
+      
+      logger.info('WhatsApp service manager initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize WhatsApp service manager', { error: error instanceof Error ? error.message : 'Unknown error' });
+      throw error;
+    }
+  }
+
+  /**
+   * Send message to a specific chat via a specific device
+   */
+  async sendMessage(deviceId: string, chatId: string, message: string): Promise<boolean> {
+    const session = this.sessions.get(deviceId);
+    if (!session) {
+      logger.error(`Session ${deviceId} not found`);
+      return false;
+    }
+    return await session.sendMessage(chatId, message);
+  }
+
+  /**
+   * Get logged-in user information for a device
+   */
+  getUser(deviceId: string): any {
+    return this.sessions.get(deviceId)?.getUser() || null;
+  }
+
+  /**
+   * Get current connection status for a device
+   */
+  getConnectionStatus(deviceId: string): ConnectionStatus {
+    return this.sessions.get(deviceId)?.getConnectionStatus() || ConnectionStatus.DISCONNECTED;
+  }
+
+  /**
+   * Check if WhatsApp is connected for a device
+   */
+  isConnected(deviceId: string): boolean {
+    return this.sessions.get(deviceId)?.isConnected() || false;
+  }
+
+  /**
+   * Disconnect WhatsApp for a device
+   */
+  async disconnect(deviceId: string): Promise<void> {
+    const session = this.sessions.get(deviceId);
+    if (session) {
+      await session.disconnect();
+      this.sessions.delete(deviceId);
+    }
+  }
+
+  /**
+   * Disconnect all devices
+   */
+  async disconnectAll(): Promise<void> {
+    const disconnectPromises = Array.from(this.sessions.values()).map(session => session.disconnect());
+    await Promise.all(disconnectPromises);
+    this.sessions.clear();
   }
 
   /**
    * Get chat participants (for group chats)
    */
-  async getChatParticipants(chatId: string): Promise<string[]> {
-    if (!this.sock || !chatId.endsWith('@g.us')) {
-      return [];
-    }
+  async getChatParticipants(deviceId: string, chatId: string): Promise<string[]> {
+    const session = this.sessions.get(deviceId);
+    if (!session) return [];
+    return await session.getChatParticipants(chatId);
+  }
 
-    try {
-      const groupMetadata = await this.sock.groupMetadata(chatId);
-      return groupMetadata.participants.map(p => p.id);
-    } catch (error) {
-      logger.error('Failed to get chat participants', { chatId, error: error instanceof Error ? error.message : 'Unknown error' });
-      return [];
+  /**
+   * Delete device from Database and local storage
+   */
+  async deleteSession(deviceId: string): Promise<void> {
+    await this.disconnect(deviceId);
+    const sessionPath = path.resolve(__dirname, `../../.whatsapp-sessions/${deviceId}`);
+    if (fs.existsSync(sessionPath)) {
+      fs.rmSync(sessionPath, { recursive: true, force: true });
     }
   }
-} 
+}
