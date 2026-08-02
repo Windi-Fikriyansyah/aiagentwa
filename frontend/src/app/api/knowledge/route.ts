@@ -36,8 +36,7 @@ export async function GET(request: Request) {
         }
       }
     } else if (targetUserId) {
-      // If no deviceId provided, return all knowledge for all devices of the user
-      whereClause.device = { userId: targetUserId };
+      whereClause.userId = targetUserId;
     } else {
       // Internal call with no deviceId and no userId
       return NextResponse.json({ error: "deviceId or userId is required for internal requests" }, { status: 400 });
@@ -175,6 +174,7 @@ export async function POST(request: Request) {
             sizeBytes: buffer.length,
             geminiFileUri,
             deviceId,
+            userId,
           },
         });
         
@@ -274,6 +274,7 @@ export async function POST(request: Request) {
           sizeBytes: file.size,
           geminiFileUri,
           deviceId,
+          userId,
         },
       });
 

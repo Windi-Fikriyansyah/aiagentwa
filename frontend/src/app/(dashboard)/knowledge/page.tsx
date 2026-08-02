@@ -51,10 +51,10 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const fetchSources = async (deviceId: string) => {
-    if (!deviceId) return;
+  const fetchSources = async (deviceId?: string) => {
     try {
-      const res = await fetch(`/api/knowledge?deviceId=${deviceId}`);
+      const url = deviceId ? `/api/knowledge?deviceId=${deviceId}` : `/api/knowledge`;
+      const res = await fetch(url);
       const data = await res.json();
       if (Array.isArray(data)) {
         setSources(data);
@@ -66,6 +66,8 @@ export default function KnowledgeBasePage() {
 
   useEffect(() => {
     fetchDevices();
+    // Also fetch sources initially in case there are global sources or no devices
+    fetchSources();
   }, []);
 
   useEffect(() => {
