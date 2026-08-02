@@ -281,10 +281,16 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
 
       // Generate response using AI Service
       logger.info('Calling AI service generateResponse');
+      
+      // message.deviceId is the userId (frontend connect route sends userId as deviceId)
+      // Pass it directly so AI service can fetch settings by userId
+      const ownerUserId = message.deviceId || '';
+      logger.info('DEBUG: ownerUserId for AI config lookup', { ownerUserId });
+      
       const aiResponse = await this.aiService.generateResponse(
         message.content,
         chatHistory,
-        message.deviceId
+        ownerUserId
       );
       logger.info('AI response generated successfully', { responseLength: aiResponse.message.length });
 

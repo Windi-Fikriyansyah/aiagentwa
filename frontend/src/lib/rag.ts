@@ -78,6 +78,7 @@ export async function processAndUploadRAG(
         values: emb.embedding,
         metadata: {
           sourceId,
+          userId,
           text: batchChunks[idx],
           url: urlContext || ''
         }
@@ -93,6 +94,7 @@ export async function processAndUploadRAG(
     console.log(`Successfully uploaded ${chunks.length} chunks to Pinecone for source ${sourceId}`);
   } catch (error) {
     console.error("Error in processAndUploadRAG:", error);
+    throw error;
   }
 }
 

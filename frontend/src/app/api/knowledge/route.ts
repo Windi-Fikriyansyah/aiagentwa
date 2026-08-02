@@ -179,9 +179,17 @@ export async function POST(request: Request) {
         });
         
         // RAG Processing for OpenRouter
-        const { processAndUploadRAG } = await import("@/lib/rag");
-        // Execute asynchronously so it doesn't block the response
-        processAndUploadRAG(source.id, userId, buffer, "text/plain", url).catch(console.error);
+        if (useOpenRouter) {
+          const { processAndUploadRAG } = await import("@/lib/rag");
+          try {
+            await processAndUploadRAG(source.id, userId, buffer, "text/plain", url);
+          } catch (ragErr: any) {
+            console.error("OpenRouter RAG Processing failed:", ragErr);
+            // Delete the source if RAG fails
+            await prisma.knowledgeSource.delete({ where: { id: source.id } });
+            return NextResponse.json({ error: "OpenRouter Embedding failed: Pastikan API Key dan Embed Model valid. Detail: " + ragErr.message }, { status: 500 });
+          }
+        }
         
         return NextResponse.json(source);
       } catch (err: any) {

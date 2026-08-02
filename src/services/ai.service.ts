@@ -40,12 +40,12 @@ export class AIService {
   async generateResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
-    deviceId?: string
+    ownerUserId?: string
   ): Promise<AIResponse> {
     if (this.config.provider === 'openai' || this.config.provider === 'openrouter') {
-      return this.generateOpenAIResponse(message, chatHistory, deviceId);
+      return this.generateOpenAIResponse(message, chatHistory, ownerUserId);
     } else {
-      return this.generateGeminiResponse(message, chatHistory, deviceId);
+      return this.generateGeminiResponse(message, chatHistory, ownerUserId);
     }
   }
 
@@ -55,60 +55,72 @@ export class AIService {
   private async generateOpenAIResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
-    deviceId?: string
+    ownerUserId?: string
   ): Promise<AIResponse> {
     const startTime = Date.now();
-    logger.debug('Generating OpenAI response', { message, historyLength: chatHistory.length, deviceId });
+    logger.info('Generating OpenAI response', { message: message.substring(0, 50), historyLength: chatHistory.length, ownerUserId });
     try {
-      // 1. Fetch custom system prompt and deviceUserId
+      // 1. Fetch custom system prompt from device (by userId)
       let currentSystemPrompt = this.config.systemPrompt;
-      let deviceUserId = '';
-      if (deviceId) {
+      
+      if (ownerUserId) {
         try {
           const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-          const deviceRes = await fetch(`${frontendUrl}/api/devices?id=${deviceId}`, {
+          const deviceRes = await fetch(`${frontendUrl}/api/devices`, {
             headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
           });
           if (deviceRes.ok) {
-            const devices = (await deviceRes.json()) as any[];
-            if (devices && devices.length > 0) {
-              if (devices[0].systemPrompt) currentSystemPrompt = devices[0].systemPrompt;
-              if (devices[0].userId) deviceUserId = devices[0].userId;
+            const allDevices = (await deviceRes.json()) as any[];
+            // Find device belonging to this user
+            const userDevice = allDevices.find((d: any) => d.userId === ownerUserId);
+            if (userDevice?.systemPrompt) {
+              currentSystemPrompt = userDevice.systemPrompt;
+              logger.info('Using custom system prompt from device', { deviceName: userDevice.name });
             }
           }
         } catch (e) {
-          logger.warn('Failed to fetch device info for OpenAI/OpenRouter', { error: e });
+          logger.warn('Failed to fetch device system prompt', { error: e });
         }
       }
 
       // 2. Retrieve RAG Context
       const { retrieveRelevantContext } = await import('../utils/rag');
-      const ragContext = await retrieveRelevantContext(message, deviceUserId);
+      const ragContext = await retrieveRelevantContext(message, ownerUserId || '');
       
       let finalSystemPrompt = currentSystemPrompt;
       if (ragContext) {
         finalSystemPrompt += `\n\nGunakan referensi dokumen berikut untuk menjawab jika relevan:\n${ragContext}`;
       }
 
-      // Fetch dynamic config
+      // 3. Fetch dynamic OpenRouter config from user settings
       let activeModel = this.config.model;
       let activeClient = this.openai;
 
       try {
         const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-        const settingsUrl = deviceUserId
-          ? `${frontendUrl}/api/settings?userId=${deviceUserId}`
+        const settingsUrl = ownerUserId
+          ? `${frontendUrl}/api/settings?userId=${ownerUserId}`
           : `${frontendUrl}/api/settings`;
+        logger.info('Fetching AI settings', { settingsUrl });
         const settingsRes = await fetch(settingsUrl, {
           headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
         });
         const user: any = await settingsRes.json();
+        logger.info('Settings response', { 
+          hasApiKey: !!user?.openrouterApiKey, 
+          apiKeyLength: user?.openrouterApiKey?.length || 0,
+          apiKeyPreview: user?.openrouterApiKey ? `${user.openrouterApiKey.substring(0, 5)}...${user.openrouterApiKey.substring(user.openrouterApiKey.length - 4)}` : 'EMPTY',
+          hasModel: !!user?.openrouterModel, 
+          model: user?.openrouterModel,
+          userId: user?.id 
+        });
         
         if (user && user.openrouterApiKey && user.openrouterModel) {
-          activeModel = user.openrouterModel;
+          const apiKey = user.openrouterApiKey.trim();
+          activeModel = user.openrouterModel.trim();
           activeClient = new OpenAI({ 
             baseURL: "https://openrouter.ai/api/v1",
-            apiKey: user.openrouterApiKey,
+            apiKey: apiKey,
             defaultHeaders: {
               "HTTP-Referer": process.env['FRONTEND_URL'] || "http://localhost:3000",
               "X-Title": "WhatsApp AI Agent",
@@ -171,33 +183,29 @@ export class AIService {
   private async generateGeminiResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
-    targetDeviceId?: string
+    ownerUserId?: string
   ): Promise<AIResponse> {
     const startTime = Date.now();
-    logger.debug('Generating Gemini response', { message, targetDeviceId });
+    logger.info('Generating Gemini response', { message: message.substring(0, 50), ownerUserId });
     try {
-      // 1. Fetch device info to get custom system prompt and device ID
+      // 1. Fetch device info to get custom system prompt
       let currentSystemPrompt = this.config.systemPrompt;
       let deviceId = null;
-      let deviceUserId = '';
 
-      if (targetDeviceId) {
+      if (ownerUserId) {
         try {
           const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-          const deviceRes = await fetch(`${frontendUrl}/api/devices?id=${targetDeviceId}`, {
+          const deviceRes = await fetch(`${frontendUrl}/api/devices`, {
             headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
           });
           if (deviceRes.ok) {
-            const devices = (await deviceRes.json()) as any[];
-            if (devices && devices.length > 0) {
-              const device = devices[0];
-              deviceId = device.id;
-              if (device.userId) {
-                deviceUserId = device.userId;
-              }
-              if (device.systemPrompt) {
-                currentSystemPrompt = device.systemPrompt;
-                logger.info(`Using custom system prompt for device ${device.name}`);
+            const allDevices = (await deviceRes.json()) as any[];
+            const userDevice = allDevices.find((d: any) => d.userId === ownerUserId);
+            if (userDevice) {
+              deviceId = userDevice.id;
+              if (userDevice.systemPrompt) {
+                currentSystemPrompt = userDevice.systemPrompt;
+                logger.info(`Using custom system prompt for device ${userDevice.name}`);
               }
             }
           }
@@ -213,8 +221,8 @@ export class AIService {
         let kbUrl = `${frontendUrl}/api/knowledge`;
         if (deviceId) {
           kbUrl += `?deviceId=${deviceId}`;
-        } else if (deviceUserId) {
-          kbUrl += `?userId=${deviceUserId}`;
+        } else if (ownerUserId) {
+          kbUrl += `?userId=${ownerUserId}`;
         }
           
         const kbResponse = await fetch(kbUrl, {

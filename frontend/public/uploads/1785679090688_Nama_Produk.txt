@@ -1,0 +1,324 @@
+Nama Produk
+
+BengkelPro
+
+Deskripsi
+
+BengkelPro adalah aplikasi kasir dan manajemen bengkel yang membantu pemilik bengkel mengelola transaksi, stok sparepart, servis kendaraan, pelanggan, hingga laporan keuangan dalam satu aplikasi yang mudah digunakan.
+
+Aplikasi ini cocok untuk:
+
+Bengkel Motor
+Bengkel Mobil
+Bengkel Ban
+Bengkel Oli
+Bengkel Variasi
+Bengkel Umum
+Bengkel AC Mobil
+Bengkel Body Repair
+Bengkel Cuci Kendaraan
+Bengkel Servis Elektronik
+Tujuan BengkelPro
+
+Membantu pemilik bengkel agar:
+
+Tidak lagi mencatat transaksi secara manual
+Mengetahui keuntungan setiap hari
+Mengontrol stok sparepart
+Melihat riwayat servis pelanggan
+Mencetak struk otomatis
+Mengelola banyak mekanik
+Mengelola banyak cabang
+Fitur Utama
+Kasir Cepat
+Input transaksi dalam hitungan detik
+Scan barcode sparepart
+Pilih jasa servis
+Pilih mekanik
+Hitung otomatis
+Diskon
+Pajak
+Metode pembayaran
+
+Mendukung:
+
+Tunai
+Transfer
+QRIS
+E-Wallet
+Manajemen Sparepart
+
+Mengelola seluruh sparepart.
+
+Fitur:
+
+Tambah barang
+Edit barang
+Hapus barang
+Kategori
+Merk
+Supplier
+Harga beli
+Harga jual
+Stok
+Minimum stok
+Barcode
+Notifikasi Stok Habis
+
+Sistem akan memberi peringatan apabila stok mulai menipis sehingga pemilik dapat segera melakukan pembelian.
+
+Riwayat Servis
+
+Semua riwayat kendaraan pelanggan tersimpan.
+
+Informasi meliputi:
+
+Tanggal servis
+Keluhan
+Sparepart diganti
+Oli digunakan
+Mekanik
+Total biaya
+Database Pelanggan
+
+Data pelanggan tersimpan otomatis.
+
+Informasi:
+
+Nama
+Nomor WhatsApp
+Alamat
+Kendaraan
+Plat nomor
+Data Kendaraan
+
+Satu pelanggan dapat memiliki banyak kendaraan.
+
+Contoh:
+
+Toyota Avanza
+
+Honda Beat
+
+Yamaha NMAX
+
+Honda Brio
+
+dan lainnya.
+
+Pengingat Servis
+
+Sistem dapat mengirim pengingat servis berkala kepada pelanggan melalui WhatsApp.
+
+Contoh:
+
+"Halo Bapak Andi, kendaraan Anda sudah waktunya ganti oli. Silakan datang kembali ke Bengkel."
+
+Manajemen Mekanik
+
+Kelola:
+
+Data mekanik
+Status aktif
+Riwayat pekerjaan
+Jumlah servis
+Pendapatan
+Pembelian Sparepart
+
+Mencatat:
+
+Supplier
+Barang masuk
+Harga beli
+Jumlah pembelian
+
+Stok akan bertambah otomatis.
+
+Pengeluaran Bengkel
+
+Catat semua biaya operasional.
+
+Contoh:
+
+Listrik
+Air
+Gaji
+Internet
+Sewa
+ATK
+Laporan Lengkap
+
+Laporan yang tersedia:
+
+Penjualan harian
+Penjualan bulanan
+Penjualan tahunan
+Keuntungan
+Omzet
+Pengeluaran
+Pembelian
+Stok
+Barang terlaris
+Jasa terlaris
+Pelanggan terbanyak
+Dashboard
+
+Dashboard menampilkan:
+
+Total penjualan
+Total transaksi
+Pendapatan
+Keuntungan
+Grafik penjualan
+Grafik transaksi
+Multi Cabang
+
+Cocok untuk bengkel yang memiliki banyak cabang.
+
+Setiap cabang memiliki:
+
+Kasir
+Mekanik
+Gudang
+Laporan
+
+Namun pemilik tetap dapat memonitor seluruh cabang dalam satu dashboard.
+
+Hak Akses
+
+Level pengguna:
+
+Owner
+Admin
+Kasir
+Mekanik
+
+Masing-masing memiliki hak akses yang berbeda.
+
+Cetak Struk
+
+Mendukung printer thermal Bluetooth maupun USB.
+
+Informasi struk:
+
+Nama bengkel
+Nomor transaksi
+Tanggal
+Sparepart
+Jasa
+Total
+Metode pembayaran
+Barcode
+
+Mendukung:
+
+Scan barcode
+Cetak barcode
+Generate barcode
+Backup Data
+
+Data dapat dibackup sehingga aman apabila perangkat rusak atau berganti.
+
+Keunggulan BengkelPro
+Mudah digunakan
+Tampilan modern
+Proses transaksi cepat
+Data tersimpan rapi
+Mengurangi kesalahan pencatatan
+Meningkatkan pelayanan pelanggan
+Memudahkan pemilik memantau usaha
+Cocok untuk usaha kecil maupun besar
+Pertanyaan yang Sering Ditanyakan (FAQ)
+Apa itu BengkelPro?
+
+BengkelPro adalah aplikasi kasir dan manajemen bengkel yang membantu mengelola transaksi, stok sparepart, servis kendaraan, pelanggan, serta laporan keuangan dalam satu sistem.
+
+Apakah bisa digunakan untuk bengkel motor?
+
+Ya, BengkelPro mendukung bengkel motor.
+
+Apakah bisa digunakan untuk bengkel mobil?
+
+Ya, BengkelPro mendukung bengkel mobil.
+
+Apakah bisa digunakan untuk banyak cabang?
+
+Ya, tersedia fitur Multi Cabang.
+
+Apakah data pelanggan tersimpan?
+
+Ya. Riwayat pelanggan dan kendaraan akan tersimpan secara otomatis.
+
+Apakah ada laporan penjualan?
+
+Ya.
+
+Tersedia laporan:
+
+Harian
+Mingguan
+Bulanan
+Tahunan
+Apakah stok otomatis berkurang?
+
+Ya.
+
+Ketika transaksi selesai, stok sparepart akan berkurang otomatis.
+
+Apakah bisa cetak struk?
+
+Ya.
+
+Mendukung printer thermal.
+
+Apakah bisa digunakan lebih dari satu kasir?
+
+Ya.
+
+Tidak ada batasan jumlah pengguna sesuai paket yang dipilih.
+
+Apakah bisa diakses dari HP?
+
+Ya.
+
+BengkelPro dapat diakses melalui smartphone, tablet, maupun komputer selama terhubung ke internet.
+
+Apakah data aman?
+
+Ya.
+
+Data tersimpan di server yang aman dengan sistem backup berkala.
+
+Target Pengguna
+
+BengkelPro cocok digunakan oleh:
+
+Bengkel Motor
+Bengkel Mobil
+Bengkel Ban
+Bengkel Oli
+Bengkel Variasi
+Bengkel AC
+Bengkel Body Repair
+Bengkel Cuci Kendaraan
+Bengkel Fleet
+Bengkel Resmi
+Bengkel Independen
+Nilai Jual BengkelPro
+Menghemat waktu administrasi.
+Mengurangi kesalahan pencatatan manual.
+Memantau keuntungan secara real-time.
+Mengetahui stok sparepart secara akurat.
+Menyimpan riwayat servis pelanggan.
+Meningkatkan profesionalisme bengkel.
+Mendukung pertumbuhan usaha dari satu hingga banyak cabang.
+Gaya Respons AI
+
+AI yang mewakili BengkelPro harus:
+
+Ramah dan profesional.
+Menjawab dengan singkat, jelas, dan mudah dipahami.
+Fokus membantu calon pelanggan menemukan solusi sesuai kebutuhan bengkel mereka.
+Tidak memberikan informasi yang tidak tersedia di knowledge base.
+Jika ditanya mengenai harga atau paket yang belum ditentukan, arahkan pengguna untuk menghubungi tim penjualan atau menunggu informasi resmi.
+Jika pengguna ingin demo atau konsultasi, ajak mereka untuk menghubungi admin agar mendapatkan presentasi dan penjelasan lebih lanjut.

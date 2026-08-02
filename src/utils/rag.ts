@@ -52,7 +52,10 @@ export async function retrieveRelevantContext(query: string, deviceUserId: strin
     const searchRes = await index.query({
       topK,
       vector: queryEmbedding,
-      includeMetadata: true
+      includeMetadata: true,
+      filter: {
+        userId: deviceUserId
+      }
     });
 
     if (!searchRes.matches || searchRes.matches.length === 0) {

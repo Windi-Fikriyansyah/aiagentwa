@@ -21,12 +21,34 @@ export async function GET(request: Request) {
     const id = searchParams.get("id");
 
     const whereClause: any = {};
-    if (jid) whereClause.jid = jid;
+    if (jid) {
+      // Extract the number part before '@' to match regardless of port suffix
+      // e.g., '628xxx@s.whatsapp.net' should also match '628xxx:12@s.whatsapp.net'
+      const numberPart = jid.split('@')[0].split(':')[0];
+      const domain = jid.includes('@') ? jid.split('@')[1] : 's.whatsapp.net';
+      whereClause.jid = {
+        in: [
+          jid,                                    // exact match: 628xxx@s.whatsapp.net
+          `${numberPart}@${domain}`,              // without port
+        ],
+      };
+      // Also use startsWith for port-suffixed variants
+      whereClause.OR = [
+        { jid: jid },
+        { jid: `${numberPart}@${domain}` },
+        { jid: { startsWith: `${numberPart}:` } },
+      ];
+      delete whereClause.jid;
+    }
     if (id) whereClause.id = id;
     if (userId && !isInternal) whereClause.userId = userId;
 
     const devices = await prisma.device.findMany({
-      where: whereClause,
+      where: whereClause.OR ? { AND: [
+        userId && !isInternal ? { userId } : {},
+        id ? { id } : {},
+        { OR: whereClause.OR },
+      ]} : whereClause,
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(devices);

@@ -73,10 +73,11 @@ export default function AgentsPage() {
   // Save device to database
   const saveDevice = async (deviceStatus: string, user: any) => {
     try {
-      // user.id format is usually '628xxx:12@s.whatsapp.net'
-      const jid = user?.id || "default-device";
+      // user.id format is usually '628xxx:12@s.whatsapp.net', normalize by removing port
+      const rawJid = user?.id || "default-device";
+      const jid = rawJid !== "default-device" ? rawJid.replace(/:\d+@/, '@') : rawJid;
       const name = user?.name || "WhatsApp Device";
-      const phoneNumber = jid !== "default-device" ? jid.split('@')[0].split(':')[0] : null;
+      const phoneNumber = jid !== "default-device" ? jid.split('@')[0] : null;
 
       await fetch("/api/devices", {
         method: "POST",
