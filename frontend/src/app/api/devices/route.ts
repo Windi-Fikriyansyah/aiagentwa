@@ -18,9 +18,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const jid = searchParams.get("jid");
+    const id = searchParams.get("id");
 
     const whereClause: any = {};
     if (jid) whereClause.jid = jid;
+    if (id) whereClause.id = id;
     if (userId && !isInternal) whereClause.userId = userId;
 
     const devices = await prisma.device.findMany({

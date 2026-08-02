@@ -40,12 +40,12 @@ export class AIService {
   async generateResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
-    receiverJid?: string
+    deviceId?: string
   ): Promise<AIResponse> {
     if (this.config.provider === 'openai' || this.config.provider === 'openrouter') {
-      return this.generateOpenAIResponse(message, chatHistory, receiverJid);
+      return this.generateOpenAIResponse(message, chatHistory, deviceId);
     } else {
-      return this.generateGeminiResponse(message, chatHistory, receiverJid);
+      return this.generateGeminiResponse(message, chatHistory, deviceId);
     }
   }
 
@@ -55,45 +55,30 @@ export class AIService {
   private async generateOpenAIResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
-    receiverJid?: string
+    deviceId?: string
   ): Promise<AIResponse> {
     const startTime = Date.now();
-    logger.debug('Generating OpenAI response', { message, historyLength: chatHistory.length, receiverJid });
+    logger.debug('Generating OpenAI response', { message, historyLength: chatHistory.length, deviceId });
     try {
-      // 1. Fetch custom system prompt if available
+      // 1. Fetch custom system prompt and deviceUserId
       let currentSystemPrompt = this.config.systemPrompt;
-      if (receiverJid) {
+      let deviceUserId = '';
+      if (deviceId) {
         try {
           const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-          const deviceRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
+          const deviceRes = await fetch(`${frontendUrl}/api/devices?id=${deviceId}`, {
             headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
           });
           if (deviceRes.ok) {
             const devices = (await deviceRes.json()) as any[];
-            if (devices && devices.length > 0 && devices[0].systemPrompt) {
-              currentSystemPrompt = devices[0].systemPrompt;
+            if (devices && devices.length > 0) {
+              if (devices[0].systemPrompt) currentSystemPrompt = devices[0].systemPrompt;
+              if (devices[0].userId) deviceUserId = devices[0].userId;
             }
           }
         } catch (e) {
-          logger.warn('Failed to fetch device system prompt for OpenAI/OpenRouter', { error: e });
+          logger.warn('Failed to fetch device info for OpenAI/OpenRouter', { error: e });
         }
-      }
-
-      // 1.5 Get deviceUserId to scope knowledge base and settings
-      let deviceUserId = '';
-      if (receiverJid) {
-        try {
-          const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-          const devRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
-            headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
-          });
-          if (devRes.ok) {
-            const devs = (await devRes.json()) as any[];
-            if (devs && devs.length > 0 && devs[0].userId) {
-              deviceUserId = devs[0].userId;
-            }
-          }
-        } catch (_) {}
       }
 
       // 2. Retrieve RAG Context
@@ -186,20 +171,20 @@ export class AIService {
   private async generateGeminiResponse(
     message: string,
     chatHistory: WhatsAppMessage[],
-    receiverJid?: string
+    targetDeviceId?: string
   ): Promise<AIResponse> {
     const startTime = Date.now();
-    logger.debug('Generating Gemini response', { message });
+    logger.debug('Generating Gemini response', { message, targetDeviceId });
     try {
       // 1. Fetch device info to get custom system prompt and device ID
       let currentSystemPrompt = this.config.systemPrompt;
       let deviceId = null;
       let deviceUserId = '';
 
-      if (receiverJid) {
+      if (targetDeviceId) {
         try {
           const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-          const deviceRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
+          const deviceRes = await fetch(`${frontendUrl}/api/devices?id=${targetDeviceId}`, {
             headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
           });
           if (deviceRes.ok) {
@@ -276,7 +261,7 @@ export class AIService {
         promptText += "--- CONVERSATION HISTORY ---\n";
         const recentHistory = chatHistory.slice(-8);
         for (const msg of recentHistory) {
-          const isBot = msg.from === 'me' || (receiverJid && msg.from === receiverJid) || msg.from === 'system';
+          const isBot = msg.from === 'me' || msg.from === 'system';
           const sender = isBot ? "Anda (Bot)" : "Pelanggan";
           promptText += `${sender}: ${msg.content}\n`;
         }

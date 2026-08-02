@@ -284,7 +284,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
       const aiResponse = await this.aiService.generateResponse(
         message.content,
         chatHistory,
-        message.to
+        message.deviceId
       );
       logger.info('AI response generated successfully', { responseLength: aiResponse.message.length });
 
