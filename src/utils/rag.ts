@@ -6,7 +6,7 @@ export async function retrieveRelevantContext(query: string, topK: number = 3): 
     // Fetch AI config from Next.js backend
     const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
     const settingsRes = await fetch(`${frontendUrl}/api/settings`, {
-      headers: { "x-internal-auth": "true" }
+      headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
     });
     const user: any = await settingsRes.json();
 

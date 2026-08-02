@@ -1,21 +1,37 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthUserId, isValidInternalAuth, verifyDeviceOwnership } from "@/lib/auth-helpers";
 
 // GET /api/conversations
 // Retrieves a list of all conversations for a specific device or user
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const deviceId = searchParams.get("deviceId");
-    
-    // Require internal auth or valid session in a real app
-    const internalKey = request.headers.get("x-internal-auth");
-    
-    if (!deviceId && internalKey !== "true") {
-      return NextResponse.json({ error: "Missing deviceId" }, { status: 400 });
+    const isInternal = isValidInternalAuth(request);
+    const userId = await getAuthUserId();
+
+    if (!userId && !isInternal) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const whereClause = deviceId ? { deviceId } : {};
+    const { searchParams } = new URL(request.url);
+    const deviceId = searchParams.get("deviceId");
+
+    const whereClause: any = {};
+
+    if (deviceId) {
+      // If user is logged in, verify device belongs to them
+      if (userId && !isInternal) {
+        const device = await verifyDeviceOwnership(deviceId, userId);
+        if (!device) {
+          return NextResponse.json({ error: "Unauthorized device access" }, { status: 403 });
+        }
+      }
+      whereClause.deviceId = deviceId;
+    } else if (userId && !isInternal) {
+      // No deviceId specified: return conversations for all user's devices
+      whereClause.device = { userId };
+    }
+    // If internal, no filter (return all)
 
     const conversations = await prisma.conversation.findMany({
       where: whereClause,
@@ -40,8 +56,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     // Only allow internal backend requests
-    const internalKey = request.headers.get("x-internal-auth");
-    if (internalKey !== "true") {
+    const isInternal = isValidInternalAuth(request);
+    if (!isInternal) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

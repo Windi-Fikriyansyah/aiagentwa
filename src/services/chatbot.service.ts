@@ -312,7 +312,7 @@ Gunakan sapaan hangat, ingatkan bahwa pesanan belum dibayar, berikan link pembay
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-internal-auth': 'true'
+          'x-internal-auth': process.env['INTERNAL_AUTH_SECRET'] || 'true'
         },
         body: JSON.stringify({
           deviceJid,

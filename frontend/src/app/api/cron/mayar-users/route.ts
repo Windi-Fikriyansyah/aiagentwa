@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { isValidInternalAuth } from "@/lib/auth-helpers";
 
 export async function GET(request: Request) {
   try {
-    const internalKey = request.headers.get("x-internal-auth");
-    
-    // Simple protection for internal API
-    if (internalKey !== "true") {
+    if (!isValidInternalAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import path from "path";
 import fs from "fs";
+import { isValidInternalAuth } from "@/lib/auth-helpers";
 
 // Helper function to get mime type from extension
 function getMimeType(filePath: string): string {
@@ -15,8 +16,7 @@ function getMimeType(filePath: string): string {
 
 export async function GET(request: Request) {
   try {
-    const internalKey = request.headers.get("x-internal-auth");
-    if (internalKey !== "true") {
+    if (!isValidInternalAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

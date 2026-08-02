@@ -33,7 +33,18 @@ export class WebSocketService {
     try {
       this.wss = new WebSocketServer({ port: this.port });
       
-      this.wss.on('connection', (ws: WebSocket) => {
+      this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+        // Authenticate WebSocket connection
+        const url = new URL(req.url || '/', `http://${req.headers.host}`);
+        const token = url.searchParams.get('token');
+        const expectedSecret = process.env['INTERNAL_AUTH_SECRET'] || 'true';
+        
+        if (token !== expectedSecret) {
+          logger.warn('Unauthorized WebSocket connection attempt rejected');
+          ws.close(1008, 'Unauthorized');
+          return;
+        }
+
         this.handleConnection(ws);
       });
 
@@ -58,7 +69,7 @@ export class WebSocketService {
    */
   private handleConnection(ws: WebSocket): void {
     this.clients.add(ws);
-    logger.info('New WebSocket client connected', { 
+    logger.info('New authenticated WebSocket client connected', { 
       totalClients: this.clients.size 
     });
 
@@ -288,7 +299,7 @@ export class WebSocketService {
       }
 
       if (req.url === '/api/send' && req.method === 'POST') {
-        if (req.headers['x-internal-auth'] !== 'true') {
+        if (req.headers['x-internal-auth'] !== (process.env['INTERNAL_AUTH_SECRET'] || 'true')) {
           res.writeHead(401);
           res.end(JSON.stringify({ error: 'Unauthorized' }));
           return;

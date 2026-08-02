@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
+import { getAuthUserId, isValidInternalAuth } from "@/lib/auth-helpers";
 
 // DELETE /api/knowledge/[id]
 export async function DELETE(
@@ -9,13 +10,28 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const isInternal = isValidInternalAuth(request);
+    const userId = await getAuthUserId();
+
+    if (!userId && !isInternal) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const source = await prisma.knowledgeSource.findUnique({
       where: { id },
+      include: { device: true },
     });
 
     if (!source) {
       return NextResponse.json({ error: "Source not found" }, { status: 404 });
+    }
+
+    // Verify ownership: the source's device must belong to the user
+    if (userId && !isInternal) {
+      if (!source.device || source.device.userId !== userId) {
+        return NextResponse.json({ error: "Unauthorized knowledge access" }, { status: 403 });
+      }
     }
 
     // If it's a file, delete the physical file first
@@ -41,3 +57,4 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete source" }, { status: 500 });
   }
 }
+

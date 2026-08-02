@@ -25,7 +25,7 @@ export default function InboxPage() {
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch('/api/conversations', { headers: { 'x-internal-auth': 'true' } });
+      const res = await fetch('/api/conversations');
       if (res.ok) {
         const data = await res.json();
         setConversations(data);
@@ -41,7 +41,7 @@ export default function InboxPage() {
   const fetchMessages = async () => {
     if (!selectedConvId) return;
     try {
-      const res = await fetch(`/api/conversations/${selectedConvId}/messages`, { headers: { 'x-internal-auth': 'true' } });
+      const res = await fetch(`/api/conversations/${selectedConvId}/messages`);
       if (res.ok) {
         const data = await res.json();
         setMessages(data);

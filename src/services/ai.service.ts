@@ -66,7 +66,7 @@ export class AIService {
         try {
           const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
           const deviceRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
-            headers: { "x-internal-auth": "true" }
+            headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
           });
           if (deviceRes.ok) {
             const devices = (await deviceRes.json()) as any[];
@@ -94,8 +94,26 @@ export class AIService {
 
       try {
         const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-        const settingsRes = await fetch(`${frontendUrl}/api/settings`, {
-          headers: { "x-internal-auth": "true" }
+        // Get userId from device to fetch correct user's config
+        let deviceUserId = '';
+        if (receiverJid) {
+          try {
+            const devRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
+              headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
+            });
+            if (devRes.ok) {
+              const devs = (await devRes.json()) as any[];
+              if (devs && devs.length > 0 && devs[0].userId) {
+                deviceUserId = devs[0].userId;
+              }
+            }
+          } catch (_) {}
+        }
+        const settingsUrl = deviceUserId
+          ? `${frontendUrl}/api/settings?userId=${deviceUserId}`
+          : `${frontendUrl}/api/settings`;
+        const settingsRes = await fetch(settingsUrl, {
+          headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
         });
         const user: any = await settingsRes.json();
         
@@ -179,7 +197,7 @@ export class AIService {
         try {
           const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
           const deviceRes = await fetch(`${frontendUrl}/api/devices?jid=${receiverJid}`, {
-            headers: { "x-internal-auth": "true" }
+            headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
           });
           if (deviceRes.ok) {
             const devices = (await deviceRes.json()) as any[];
@@ -206,7 +224,7 @@ export class AIService {
           : `${frontendUrl}/api/knowledge`;
           
         const kbResponse = await fetch(kbUrl, {
-          headers: { "x-internal-auth": "true" }
+          headers: { "x-internal-auth": process.env['INTERNAL_AUTH_SECRET'] || "true" }
         });
         if (kbResponse.ok) {
           const sources = (await kbResponse.json()) as any[];

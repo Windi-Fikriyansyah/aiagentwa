@@ -110,7 +110,7 @@ export class WhatsAppService {
               const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
               await fetch(`${frontendUrl}/api/devices`, {
                 method: 'DELETE',
-                headers: { 'x-internal-auth': 'true' }
+                headers: { 'x-internal-auth': process.env['INTERNAL_AUTH_SECRET'] || 'true' }
               });
               logger.info('Device record deleted from database');
             } catch (dbErr) {

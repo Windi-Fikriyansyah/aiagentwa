@@ -1,24 +1,51 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthUserId, isValidInternalAuth } from "@/lib/auth-helpers";
 
 export async function GET(request: Request) {
   try {
-    // Basic Counts
-    const totalConversations = await prisma.conversation.count();
-    const totalMessages = await prisma.message.count();
-    const aiMessages = await prisma.message.count({ where: { sender: 'ai' } });
+    const isInternal = isValidInternalAuth(request);
+    const userId = await getAuthUserId();
+
+    if (!userId && !isInternal) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Build filter based on user's devices
+    const deviceFilter = userId && !isInternal
+      ? { device: { userId } }
+      : {};
+    const deviceWhereFilter = userId && !isInternal
+      ? { userId }
+      : {};
+
+    // Basic Counts (filtered by user's devices)
+    const totalConversations = await prisma.conversation.count({
+      where: deviceFilter,
+    });
+    const totalMessages = await prisma.message.count({
+      where: { conversation: deviceFilter },
+    });
+    const aiMessages = await prisma.message.count({
+      where: { sender: 'ai', conversation: deviceFilter },
+    });
     
     const activeDevices = await prisma.device.count({ 
       where: { 
+        ...deviceWhereFilter,
         status: { in: ['connected', 'ready'] } 
       } 
     });
-    const totalDevices = await prisma.device.count();
+    const totalDevices = await prisma.device.count({
+      where: deviceWhereFilter,
+    });
     
     // AI Response Rate (percentage of AI messages vs all outbound/inbound)
     let aiResponseRate = 0;
     if (totalMessages > 0) {
-      const nonUserMessages = await prisma.message.count({ where: { sender: { not: 'user' } } });
+      const nonUserMessages = await prisma.message.count({
+        where: { sender: { not: 'user' }, conversation: deviceFilter },
+      });
       if (nonUserMessages > 0) {
         aiResponseRate = Math.round((aiMessages / nonUserMessages) * 100);
       } else if (aiMessages > 0) {
@@ -26,8 +53,9 @@ export async function GET(request: Request) {
       }
     }
     
-    // Top Devices (by conversation count)
+    // Top Devices (by conversation count, filtered by user)
     const devices = await prisma.device.findMany({
+      where: deviceWhereFilter,
       select: {
         id: true,
         name: true,
@@ -53,7 +81,7 @@ export async function GET(request: Request) {
       conversationCount: d._count.conversations
     }));
     
-    // Weekly Message Volume (Last 7 days)
+    // Weekly Message Volume (Last 7 days, filtered by user)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -62,7 +90,8 @@ export async function GET(request: Request) {
       where: {
         createdAt: {
           gte: sevenDaysAgo
-        }
+        },
+        conversation: deviceFilter,
       },
       select: {
         createdAt: true,
@@ -115,3 +144,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch metrics" }, { status: 500 });
   }
 }
+

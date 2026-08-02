@@ -52,7 +52,7 @@ export class MayarService {
       logger.info('Fetching Mayar API keys from database...');
       const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
       const usersRes = await fetch(`${frontendUrl}/api/cron/mayar-users`, {
-        headers: { 'x-internal-auth': 'true' }
+        headers: { 'x-internal-auth': process.env['INTERNAL_AUTH_SECRET'] || 'true' }
       });
       
       if (!usersRes.ok) {

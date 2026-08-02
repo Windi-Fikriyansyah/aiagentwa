@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthUserId, isValidInternalAuth } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
+  const isInternal = isValidInternalAuth(request);
+  const userId = await getAuthUserId();
+
+  if (!userId && !isInternal) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get("id");
 
@@ -25,6 +33,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const isInternal = isValidInternalAuth(request);
+  const userId = await getAuthUserId();
+
+  if (!userId && !isInternal) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const data = await request.json();
     const { action, transaction, id } = data;
@@ -52,3 +67,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Database error" }, { status: 500 });
   }
 }
+

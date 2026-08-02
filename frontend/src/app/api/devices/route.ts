@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { isValidInternalAuth } from "@/lib/auth-helpers";
 
 // GET /api/devices - Get all devices
 export async function GET(request: Request) {
@@ -9,8 +10,7 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     
-    const internalKey = request.headers.get("x-internal-auth");
-    const isInternal = internalKey === "true";
+    const isInternal = isValidInternalAuth(request);
 
     if (!userId && !isInternal) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,8 +40,7 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     
-    const internalKey = request.headers.get("x-internal-auth");
-    const isInternal = internalKey === "true";
+    const isInternal = isValidInternalAuth(request);
 
     if (!userId && !isInternal) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -96,8 +95,7 @@ export async function DELETE(request: Request) {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     
-    const internalKey = request.headers.get("x-internal-auth");
-    const isInternal = internalKey === "true";
+    const isInternal = isValidInternalAuth(request);
 
     if (!userId && !isInternal) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
