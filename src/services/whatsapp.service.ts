@@ -144,10 +144,10 @@ export class WhatsAppService {
   /**
    * Disconnect WhatsApp for a device
    */
-  async disconnect(deviceId: string): Promise<void> {
+  async disconnect(deviceId: string, isLogout: boolean = false): Promise<void> {
     const session = this.sessions.get(deviceId);
     if (session) {
-      await session.disconnect();
+      await session.disconnect(isLogout);
       this.sessions.delete(deviceId);
     }
   }
@@ -156,7 +156,7 @@ export class WhatsAppService {
    * Disconnect all devices
    */
   async disconnectAll(): Promise<void> {
-    const disconnectPromises = Array.from(this.sessions.values()).map(session => session.disconnect());
+    const disconnectPromises = Array.from(this.sessions.values()).map(session => session.disconnect(false));
     await Promise.all(disconnectPromises);
     this.sessions.clear();
   }
@@ -174,7 +174,7 @@ export class WhatsAppService {
    * Delete device from Database and local storage
    */
   async deleteSession(deviceId: string): Promise<void> {
-    await this.disconnect(deviceId);
+    await this.disconnect(deviceId, true);
     const sessionPath = path.resolve(__dirname, `../../.whatsapp-sessions/${deviceId}`);
     if (fs.existsSync(sessionPath)) {
       fs.rmSync(sessionPath, { recursive: true, force: true });

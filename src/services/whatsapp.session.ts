@@ -286,9 +286,18 @@ export class WhatsAppSession {
     return this.connectionStatus === ConnectionStatus.READY;
   }
 
-  async disconnect(): Promise<void> {
+  async disconnect(isLogout: boolean = false): Promise<void> {
     if (this.sock) {
-      await this.sock.logout();
+      if (isLogout) {
+        try {
+          await this.sock.logout();
+        } catch (e) {
+          logger.error(`Error logging out device ${this.deviceId}`, { error: e instanceof Error ? e.message : 'Unknown' });
+        }
+      } else {
+        // Just close the WebSocket connection to stop it gracefully
+        this.sock.end(undefined);
+      }
       this.sock = null;
     }
     this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
