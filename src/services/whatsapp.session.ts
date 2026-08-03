@@ -153,9 +153,26 @@ export class WhatsAppSession {
       this.sock.ev.on('creds.update', saveCreds);
 
       this.sock.ev.on('messages.upsert', async (m) => {
+        // 1. FILTER TYPE UPSERT (KUNCI UTAMA SINKRONISASI PRIBADI)
+        // Hanya proses jika 'notify' (pesan baru masuk secara real-time).
+        // Abaikan 'append' (pesan hasil sinkronisasi/riwayat lama).
+        if (m.type !== 'notify') return;
+
         const msg = m.messages[0];
+        if (!msg) return;
+
+        // 3. FILTER PESAN SISTEM / STUB TYPE
+        // Eksekusi AI hanya untuk pesan murni real-time dari Personal Chat
+        if (msg.messageStubType) return;
+
+        // 2. FILTER PRIBADI VS GRUP
+        // Jika AI Agent khusus untuk Private Chat, abaikan semua pesan dari Group Chat (@g.us)
+        if (msg.key.remoteJid?.endsWith('@g.us')) {
+          // Ini pesan grup, abaikan jika AI Agent hanya untuk chat personal
+          return;
+        }
         
-        if (msg && !msg.key.fromMe && msg.message) {
+        if (!msg.key.fromMe && msg.message) {
           const whatsappMessage = this.parseMessage(msg);
           if (whatsappMessage) {
             logger.info(`Message received on device ${this.deviceId}`, { 
