@@ -167,28 +167,21 @@ export class MayarService {
           const diffMs = now.getTime() - trxDate.getTime();
           const isOlderThan15Mins = diffMs >= 15 * 60 * 1000;
 
-          if (isOlderThan15Mins) {
+          if (isOlderThan15Mins && this.isTodayOrYesterday(trx.createdAt)) {
             this.addToQueue(trx);
           }
         } else {
           // Logic for existing transactions in DB
           const existing = checkData.transaction;
-          if (existing.followUpCount < 3) {
+          // Hanya follow up jika belum pernah di follow up (followUpCount === 0)
+          if (existing.followUpCount === 0) {
             const now = new Date();
             const lastFollowUp = existing.lastFollowUpAt ? new Date(existing.lastFollowUpAt) : new Date(existing.createdAt);
             
-            if (existing.followUpCount === 0) {
-              // It was stored previously but was too new to follow up. Let's check if 15 mins have passed
-              const diffMs = now.getTime() - lastFollowUp.getTime();
-              if (diffMs >= 15 * 60 * 1000) {
-                this.addToQueue(trx);
-              }
-            } else {
-              // 2nd or 3rd follow up (Wait 24 hours between them)
-              const diffHours = (now.getTime() - lastFollowUp.getTime()) / (1000 * 60 * 60);
-              if (diffHours >= 24) { 
-                this.addToQueue(trx);
-              }
+            // It was stored previously but was too new to follow up. Let's check if 15 mins have passed
+            const diffMs = now.getTime() - lastFollowUp.getTime();
+            if (diffMs >= 15 * 60 * 1000 && this.isTodayOrYesterday(existing.createdAt)) {
+              this.addToQueue(trx);
             }
           }
         }
@@ -196,6 +189,22 @@ export class MayarService {
         logger.error(`Error processing transaction ${trx.id}`, { error: err.message });
       }
     }
+  }
+
+  private isTodayOrYesterday(dateStr: string | Date): boolean {
+    const now = new Date();
+    const targetDate = new Date(dateStr);
+    
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const targetDateStartOfDay = new Date(targetDate);
+    targetDateStartOfDay.setHours(0, 0, 0, 0);
+    
+    return targetDateStartOfDay.getTime() === today.getTime() || targetDateStartOfDay.getTime() === yesterday.getTime();
   }
 
   private addToQueue(trx: any) {
